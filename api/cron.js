@@ -128,8 +128,8 @@ Format output dalam JSON dengan key:
           "gemini-flash-latest",
         ]
       : [
-          "gemini-flash-latest",
           "gemini-flash-lite-latest",
+          "gemini-flash-latest",
           "gemini-pro-latest",
         ];
 
@@ -150,12 +150,9 @@ Format output dalam JSON dengan key:
               generationConfig: {
                 responseMimeType: "application/json",
                 temperature: 0.9,
-                ...(model.includes("flash")
-                  ? { thinkingConfig: { thinkingBudget: 0 } }
-                  : {}),
               },
             }),
-            signal: AbortSignal.timeout(25000),
+            signal: AbortSignal.timeout(20000),
           }
         );
       } catch (err) {
