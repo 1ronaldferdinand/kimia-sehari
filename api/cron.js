@@ -121,21 +121,29 @@ Format output dalam JSON dengan key:
 - "konsep_visual": Deskripsi singkat adegan visual dengan palet Cokelat, Hijau, Putih
 - "caption": Caption Instagram & TikTok lengkap dengan hashtag sains`;
 
-    const aiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.9,
-          },
-        }),
-        signal: AbortSignal.timeout(25000),
-      }
-    );
+    const primaryModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+    const callGemini = (model) =>
+      fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.9,
+            },
+          }),
+          signal: AbortSignal.timeout(25000),
+        }
+      );
+
+    // Fall back to the rolling alias if a pinned model version is retired for new API keys.
+    let aiResponse = await callGemini(primaryModel);
+    if (aiResponse.status === 404 && primaryModel !== "gemini-flash-latest") {
+      aiResponse = await callGemini("gemini-flash-latest");
+    }
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
