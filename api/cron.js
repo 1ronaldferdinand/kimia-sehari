@@ -222,104 +222,7 @@ function buildOutroSvg(content) {
   </svg>`;
 }
 
-function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, stepNumber, zoomType) {
-  const camKeyframe =
-    zoomType === "microscope"
-      ? "@keyframes camMove { 0% { transform: scale(1); } 100% { transform: scale(1.12); } }"
-      : zoomType === "outro"
-        ? "@keyframes camMove { 0% { transform: scale(1.06); } 100% { transform: scale(1); } }"
-        : "@keyframes camMove { 0% { transform: scale(1); } 100% { transform: scale(1.08); } }";
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8" />
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    width: 1080px;
-    height: 1920px;
-    background: linear-gradient(180deg, #E6F3F9 0%, #F7F4EC 52%, #EDE6D6 100%);
-    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  .header {
-    width: 960px;
-    margin-top: 82px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-    animation: slideDown 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  }
-  .badge {
-    background: #2E6F40;
-    color: #FFFFFF;
-    font-size: 24px;
-    font-weight: 800;
-    letter-spacing: 1.4px;
-    padding: 11px 28px;
-    border-radius: 999px;
-    text-transform: uppercase;
-  }
-  .title {
-    color: #3B281E;
-    font-size: 44px;
-    font-weight: 900;
-    text-align: center;
-    line-height: 1.18;
-  }
-  .stage {
-    width: 1000px;
-    height: 1220px;
-    margin-top: 28px;
-    border-radius: 40px;
-    overflow: hidden;
-    box-shadow: 0 24px 60px rgba(59, 40, 30, 0.14);
-    border: 6px solid #FFFFFF;
-    background: #FFFFFF;
-  }
-  .cam {
-    width: 100%;
-    height: 100%;
-    animation: camMove 11s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-  }
-  .cam svg {
-    width: 100%;
-    height: 100%;
-    display: block;
-  }
-  .float-slow { animation: floatSlow 4.5s ease-in-out infinite alternate; }
-  .float-fast { animation: floatSlow 2.6s ease-in-out infinite alternate; }
-  .pulse-box { animation: pulseBox 2s ease-in-out infinite; }
-  .spin-slow { animation: spinSlow 24s linear infinite; }
-  .pop-1 { opacity: 0; animation: popIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards; }
-  .pop-2 { opacity: 0; animation: popIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.6s forwards; }
-  .pop-3 { opacity: 0; animation: popIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) 1.0s forwards; }
-  @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes floatSlow { from { transform: translateY(-8px); } to { transform: translateY(8px); } }
-  @keyframes pulseBox { 0%, 100% { stroke-opacity: 1; } 50% { stroke-opacity: 0.45; } }
-  @keyframes spinSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  @keyframes popIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-  ${camKeyframe}
-</style>
-</head>
-<body>
-  <div class="header">
-    <div class="badge">${escapeXml(stepNumber)} • ${escapeXml(sceneBadge)}</div>
-    <div class="title">${escapeXml(topicTitle)}</div>
-  </div>
-  <div class="stage">
-    <div class="cam">${svgMarkup}</div>
-  </div>
-</body>
-</html>`;
-}
-
-function buildJson2VideoMovie(content) {
+function buildCreatomateRenderScript(content) {
   const shortTitle = content.judul_pendek || content.topik;
 
   const scenesSpec = [
@@ -373,43 +276,120 @@ function buildJson2VideoMovie(content) {
     },
   ];
 
+  const zoomScale = {
+    microscope: { start_scale: "100%", end_scale: "112%" },
+    outro: { start_scale: "106%", end_scale: "100%" },
+    macro: { start_scale: "100%", end_scale: "108%" },
+  };
+
   return {
-    resolution: "instagram-story",
-    quality: "high",
-    scenes: scenesSpec.map((s) => ({
-      comment: s.comment,
-      ...(s.fade ? { transition: { style: "fade", duration: 0.6 } } : {}),
-      elements: [
-        {
-          type: "html",
-          html: buildSceneHtml(s.svg, shortTitle, s.badge, s.step, s.zoom),
-          width: 1080,
-          height: 1920,
-        },
-        {
-          type: "voice",
-          model: "azure",
-          voice: "id-ID-ArdiNeural",
-          text: s.text,
-        },
-      ],
-    })),
-    elements: [
-      {
-        type: "subtitles",
-        settings: {
-          style: "boxed-word",
-          "font-family": "Montserrat",
-          "font-size": 52,
-          "word-color": "#FFFFFF",
-          "line-color": "#E2E8F0",
-          "box-color": "#1E293B",
-          "outline-color": "#000000",
-          position: "bottom-center",
-          "max-words-per-line": 3,
-        },
-      },
-    ],
+    output_format: "mp4",
+    width: 1080,
+    height: 1920,
+    elements: scenesSpec.map((s, idx) => {
+      const voiceName = `voice_scene_${idx + 1}`;
+      const scale = zoomScale[s.zoom] || zoomScale.macro;
+
+      return {
+        type: "composition",
+        name: s.comment,
+        track: 1,
+        fill_color: "#F7F4EC",
+        ...(s.fade
+          ? {
+              animations: [
+                {
+                  time: 0,
+                  duration: 0.6,
+                  transition: true,
+                  type: "fade",
+                },
+              ],
+            }
+          : {}),
+        elements: [
+          {
+            type: "text",
+            text: `${s.step} • ${s.badge}`,
+            y: "6.5%",
+            width: "auto",
+            height: "auto",
+            x_alignment: "50%",
+            y_alignment: "50%",
+            x_padding: "2.6%",
+            y_padding: "1.1%",
+            background_color: "#2E6F40",
+            background_border_radius: "50%",
+            font_family: "Inter",
+            font_weight: "800",
+            font_size: "2.3 vmin",
+            fill_color: "#FFFFFF",
+            text_transform: "uppercase",
+          },
+          {
+            type: "text",
+            text: shortTitle,
+            y: "13.5%",
+            width: "88%",
+            height: "auto",
+            x_alignment: "50%",
+            y_alignment: "50%",
+            font_family: "Inter",
+            font_weight: "900",
+            font_size: "4.1 vmin",
+            line_height: "118%",
+            fill_color: "#3B281E",
+          },
+          {
+            type: "image",
+            source: `data:image/svg+xml;base64,${Buffer.from(s.svg).toString("base64")}`,
+            y: "50%",
+            width: "92%",
+            height: "62%",
+            fit: "contain",
+            fill_color: "#FFFFFF",
+            border_radius: "4%",
+            stroke_color: "#FFFFFF",
+            stroke_width: "0.6%",
+            animations: [
+              {
+                easing: "ease-in-out",
+                type: "scale",
+                scope: "element",
+                start_scale: scale.start_scale,
+                end_scale: scale.end_scale,
+              },
+            ],
+          },
+          {
+            type: "audio",
+            name: voiceName,
+            source: s.text,
+            provider:
+              "elevenlabs model_id=eleven_multilingual_v2 voice_id=XrExE9yKIg1WjnnlVkGX stability=0.75",
+          },
+          {
+            type: "text",
+            name: `subtitles_scene_${idx + 1}`,
+            text: "Subtitle",
+            y: "87%",
+            width: "84%",
+            height: "16%",
+            x_alignment: "50%",
+            y_alignment: "50%",
+            font_family: "Montserrat",
+            font_weight: "700",
+            font_size: "4.8 vmin",
+            fill_color: "#FFFFFF",
+            stroke_color: "#000000",
+            stroke_width: "1.2 vmin",
+            transcript_source: voiceName,
+            transcript_effect: "highlight",
+            transcript_color: "#FDE047",
+          },
+        ],
+      };
+    }),
   };
 }
 
@@ -562,7 +542,7 @@ Format output dalam JSON murni dengan key:
     }
 
     const content = JSON.parse(rawText);
-    const json2videoMovie = buildJson2VideoMovie(content);
+    const creatomateRenderScript = buildCreatomateRenderScript(content);
 
     const enrichedPayload = {
       topik: content.topik,
@@ -575,8 +555,8 @@ Format output dalam JSON murni dengan key:
       mechanism_steps: content.mechanism_steps,
       summary_points: content.summary_points,
       caption: content.caption,
-      json2video_movie: json2videoMovie,
-      json2video_json_string: JSON.stringify(json2videoMovie),
+      creatomate_render_script: creatomateRenderScript,
+      creatomate_json_string: JSON.stringify(creatomateRenderScript),
     };
 
     // Run webhook deliveries and topic history recording in parallel to stay well within Vercel's timeout limit.

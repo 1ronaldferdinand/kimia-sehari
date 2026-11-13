@@ -23,13 +23,13 @@
         "useNewZLibDeCompress": true
       },
       "mapper": {
-        "url": "https://api.json2video.com/v2/movies",
+        "url": "https://api.creatomate.com/v2/renders",
         "serializeUrl": false,
         "method": "post",
         "headers": [
           {
-            "name": "x-api-key",
-            "value": "ISI_DENGAN_API_KEY_JSON2VIDEO_KAMU"
+            "name": "Authorization",
+            "value": "Bearer ISI_DENGAN_API_KEY_CREATOMATE_KAMU"
           },
           {
             "name": "Content-Type",
@@ -40,7 +40,7 @@
         "bodyType": "raw",
         "parseResponse": true,
         "contentType": "application/json",
-        "data": "{{1.payload.json2video_json_string}}"
+        "data": "{{1.payload.creatomate_json_string}}"
       },
       "metadata": {
         "designer": {
@@ -73,13 +73,13 @@
         "useNewZLibDeCompress": true
       },
       "mapper": {
-        "url": "https://api.json2video.com/v2/movies?project={{2.data.project}}",
+        "url": "https://api.creatomate.com/v2/renders/{{2.data.id}}",
         "serializeUrl": false,
         "method": "get",
         "headers": [
           {
-            "name": "x-api-key",
-            "value": "ISI_DENGAN_API_KEY_JSON2VIDEO_KAMU"
+            "name": "Authorization",
+            "value": "Bearer ISI_DENGAN_API_KEY_CREATOMATE_KAMU"
           }
         ],
         "qs": [],
@@ -115,7 +115,7 @@
         "bodyType": "raw",
         "parseResponse": true,
         "contentType": "application/json",
-        "data": "{\"chat_id\": \"759197417\", \"video\": \"{{4.data.movie.url}}\", \"caption\": {{toString(1.payload.caption)}}}"
+        "data": "{\"chat_id\": \"759197417\", \"video\": \"{{4.data.url}}\", \"caption\": {{toString(1.payload.caption)}}}"
       },
       "metadata": {
         "designer": {

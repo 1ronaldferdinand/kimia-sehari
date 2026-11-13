@@ -143,34 +143,30 @@ Variabel yang dikirim oleh Vercel ke Make.com:
 - `payload.images.scene_1_macro` -> URL Gambar AI Gratis Adegan 1 (Aktivitas/Objek Nyata)
 - `payload.images.scene_2_microscope` -> URL Gambar AI Gratis Adegan 2 (Zoom Mikroskop/Molekul)
 - `payload.images.scene_3_outro` -> URL Gambar AI Gratis Adegan 3 (Kesimpulan Visual)
-- `payload.json2video_json_string` -> Konfigurasi JSON lengkap siap pakai untuk modul **JSON2Video**
+- `payload.creatomate_json_string` -> Konfigurasi RenderScript JSON lengkap siap pakai untuk API **Creatomate**
 - `payload.caption` -> Caption lengkap beserta hashtag
 
 ---
 
-### Cara Render Video Otomatis Gratis (Pollinations AI + JSON2Video di Make.com)
+### Cara Render Video Otomatis (SVG + Creatomate di Make.com)
 
-Solusi ini menggabungkan **Pollinations AI** (generator ilustrasi 3 adegan Makro -> Mikroskop -> Kesimpulan yang 100% gratis tanpa API key) dengan **JSON2Video** (kuota gratis 600 detik video, sudah termasuk animasi kamera *Zoom-In*, suara narator Bahasa Indonesia, dan *subtitle* otomatis):
+Solusi ini menggabungkan ilustrasi SVG 5 adegan (*Hook* -> *Zoom* -> *Mikroskop* -> *Mekanisme* -> *Penutup*) dengan **Creatomate** (sudah termasuk animasi kamera *Zoom-In*, suara narator TTS, dan *subtitle* otomatis):
 
-#### 1. Ambil API Key Gratis JSON2Video
-1. Daftar akun gratis di [json2video.com](https://json2video.com/).
-2. Masuk ke menu **API Keys** di dashboard JSON2Video, lalu salin **API Key** kamu.
+#### 1. Ambil API Key & Aktifkan Integrasi TTS Creatomate
+1. Daftar akun di [creatomate.com](https://creatomate.com/).
+2. Masuk ke **Project Settings -> API** untuk menyalin **API Key** kamu.
+3. Masuk ke **Project Settings -> Integrations** dan hubungkan API Key **ElevenLabs** (atau sesuaikan `provider` di `api/cron.js` jika memakai OpenAI TTS) agar fitur voiceover & subtitle otomatis aktif.
 
-#### 2. Pasang Modul JSON2Video di Make.com
-1. Di sebelah kanan modul **Custom Webhook** pada Make.com, klik tanda **`+`**, cari aplikasi **JSON2Video**.
-2. Pilih aksi **Create a Movie from JSON** (atau jika belum ada, gunakan modul **HTTP -> Make a request** ke `https://api.json2video.com/v2/movies`).
-3. Jika menggunakan modul resmi **JSON2Video (Create a Movie from JSON)**:
-   - Hubungkan akun dengan memasukkan API Key JSON2Video kamu.
-   - Pada kolom **Movie JSON**, cukup masukkan 1 variabel dari Webhook:
-     `payload.json2video_json_string`
-   - Klik **OK**.
-4. Tambahkan modul kedua dari JSON2Video tepat di sebelahnya: **Wait for a Movie to Render**:
-   - Pada kolom **Project ID**, pilih variabel `project` yang keluar dari modul JSON2Video pertama.
-   - Modul ini akan menunggu sekitar 20 sampai 40 detik sampai file `.mp4` selesai dibuat dan mengeluarkan variabel **`movie.url`** (link video `.mp4` yang sudah jadi).
+#### 2. Pasang Modul Creatomate di Make.com
+1. Di sebelah kanan modul **Custom Webhook** pada Make.com, import `make-blueprint.json` atau tambahkan modul **HTTP -> Make a request** ke `https://api.creatomate.com/v2/renders` (method `POST`, header `Authorization: Bearer <API_KEY_CREATOMATE>`).
+2. Pada kolom **Request content** (body), masukkan 1 variabel dari Webhook:
+   `{{1.payload.creatomate_json_string}}`
+3. Tambahkan modul **Tools -> Sleep** (45 detik), lalu modul **HTTP -> Make a request** (`GET https://api.creatomate.com/v2/renders/{{2.data.id}}`) dengan header `Authorization: Bearer <API_KEY_CREATOMATE>`.
+4. Modul ini akan mengembalikan variabel **`url`** (`{{4.data.url}}`, link video `.mp4` yang sudah jadi).
 
 #### 3. Kirim Video `.mp4` ke Telegram & Auto-Post ke Instagram Reels
-1. Klik tanda **`+`** setelah modul *Wait for a Movie to Render*.
-2. Untuk mengirim ke Telegram: pilih **HTTP / Telegram Bot -> Send a Video** dengan `video` diisi `{{3.movie.url}}` dan `caption` diisi `{{1.payload.caption}}`.
+1. Klik tanda **`+`** setelah modul HTTP GET render Creatomate.
+2. Untuk mengirim ke Telegram: pilih **HTTP / Telegram Bot -> Send a Video** dengan `video` diisi `{{4.data.url}}` dan `caption` diisi `{{1.payload.caption}}`.
 3. Untuk **Auto-Post ke Instagram Reels**:
    - **Syarat wajib dari Meta:**
      1. Ubah akun Instagram kamu menjadi akun **Professional (Creator / Business)** melalui menu *Settings -> Account type and tools -> Switch to professional account*.
@@ -179,7 +175,7 @@ Solusi ini menggabungkan **Pollinations AI** (generator ilustrasi 3 adegan Makro
    - Klik **Add Connection** dan login ke akun Facebook yang terhubung dengan Instagram tersebut.
    - Isi konfigurasi modulnya:
      - **Page:** Pilih akun Instagram Kimia Sehari
-     - **Video URL:** `{{3.movie.url}}`
+     - **Video URL:** `{{4.data.url}}`
      - **Caption:** `{{1.payload.caption}}`
      - **Share to Feed:** `Yes`
 
