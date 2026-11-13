@@ -168,11 +168,20 @@ Solusi ini menggabungkan **Pollinations AI** (generator ilustrasi 3 adegan Makro
    - Pada kolom **Project ID**, pilih variabel `project` yang keluar dari modul JSON2Video pertama.
    - Modul ini akan menunggu sekitar 20 sampai 40 detik sampai file `.mp4` selesai dibuat dan mengeluarkan variabel **`movie.url`** (link video `.mp4` yang sudah jadi).
 
-#### 3. Kirim Video `.mp4` ke Telegram atau Instagram Reels
+#### 3. Kirim Video `.mp4` ke Telegram & Auto-Post ke Instagram Reels
 1. Klik tanda **`+`** setelah modul *Wait for a Movie to Render*.
-2. Pilih **Telegram Bot -> Send a Video** (untuk cek hasil video di HP kamu) atau **Instagram for Business -> Create a Reel Post**:
-   - **Video URL / File:** pilih variabel `movie.url` dari modul JSON2Video.
-   - **Caption:** pilih variabel `payload.caption` dari modul Webhook.
+2. Untuk mengirim ke Telegram: pilih **HTTP / Telegram Bot -> Send a Video** dengan `video` diisi `{{3.movie.url}}` dan `caption` diisi `{{1.payload.caption}}`.
+3. Untuk **Auto-Post ke Instagram Reels**:
+   - **Syarat wajib dari Meta:**
+     1. Ubah akun Instagram kamu menjadi akun **Professional (Creator / Business)** melalui menu *Settings -> Account type and tools -> Switch to professional account*.
+     2. Hubungkan akun Instagram tersebut ke sebuah **Facebook Page (Halaman Facebook)** melalui menu *Edit Profile -> Page / Halaman* di Instagram.
+   - Di Make.com, klik tanda **`+`** di ujung skenario -> pilih **Instagram for Business (Facebook Login)** -> pilih **Create a Reel Post**.
+   - Klik **Add Connection** dan login ke akun Facebook yang terhubung dengan Instagram tersebut.
+   - Isi konfigurasi modulnya:
+     - **Page:** Pilih akun Instagram Kimia Sehari
+     - **Video URL:** `{{3.movie.url}}`
+     - **Caption:** `{{1.payload.caption}}`
+     - **Share to Feed:** `Yes`
 
 Setelah semua modul di Make.com terhubung:
 1. Klik ikon **Save** (simpan) di bawah layar Make.com.
