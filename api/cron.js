@@ -121,9 +121,10 @@ Format output dalam JSON dengan key:
 - "konsep_visual": Deskripsi singkat adegan visual dengan palet Cokelat, Hijau, Putih
 - "caption": Caption Instagram & TikTok lengkap dengan hashtag sains`;
 
-    const primaryModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-    const callGemini = (model) =>
-      fetch(
+    const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
+    let aiResponse;
+    try {
+      aiResponse = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
@@ -133,16 +134,16 @@ Format output dalam JSON dengan key:
             generationConfig: {
               responseMimeType: "application/json",
               temperature: 0.9,
+              thinkingConfig: {
+                thinkingBudget: 0,
+              },
             },
           }),
-          signal: AbortSignal.timeout(25000),
+          signal: AbortSignal.timeout(45000),
         }
       );
-
-    // Fall back to the rolling alias if a pinned model version is retired for new API keys.
-    let aiResponse = await callGemini(primaryModel);
-    if (aiResponse.status === 404 && primaryModel !== "gemini-flash-latest") {
-      aiResponse = await callGemini("gemini-flash-latest");
+    } catch (err) {
+      throw new Error(`Gemini API timeout/network error (${model}): ${err.message}`);
     }
 
     if (!aiResponse.ok) {
@@ -178,12 +179,16 @@ Format output dalam JSON dengan key:
             palette: ["Cokelat", "Hijau", "Putih"],
             payload: content,
           }),
-          signal: AbortSignal.timeout(15000),
-        }).then((makeRes) => {
-          if (!makeRes.ok) {
-            throw new Error(`Make.com Webhook gagal (${makeRes.status})`);
-          }
+          signal: AbortSignal.timeout(25000),
         })
+          .catch((err) => {
+            throw new Error(`Make.com Webhook timeout/error: ${err.message}`);
+          })
+          .then((makeRes) => {
+            if (!makeRes.ok) {
+              throw new Error(`Make.com Webhook gagal (${makeRes.status})`);
+            }
+          })
       );
     }
 
@@ -211,14 +216,18 @@ Format output dalam JSON dengan key:
               chat_id: TELEGRAM_CHAT_ID,
               text: telegramMessage,
             }),
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(25000),
           }
-        ).then(async (tgRes) => {
-          if (!tgRes.ok) {
-            const tgErr = await tgRes.text();
-            throw new Error(`Telegram API gagal (${tgRes.status}): ${tgErr}`);
-          }
-        })
+        )
+          .catch((err) => {
+            throw new Error(`Telegram API timeout/error: ${err.message}`);
+          })
+          .then(async (tgRes) => {
+            if (!tgRes.ok) {
+              const tgErr = await tgRes.text();
+              throw new Error(`Telegram API gagal (${tgRes.status}): ${tgErr}`);
+            }
+          })
       );
     }
 
