@@ -319,13 +319,14 @@ Format output dalam JSON murni dengan key:
     const modelCandidates = process.env.GEMINI_MODEL
       ? [
           process.env.GEMINI_MODEL,
+          "gemini-3.8-flash",
           "gemini-flash-latest",
           "gemini-flash-lite-latest",
         ]
       : [
-          "gemini-flash-lite-latest",
+          "gemini-3.8-flash",
           "gemini-flash-latest",
-          "gemini-pro-latest",
+          "gemini-flash-lite-latest",
         ];
 
     let aiResponse;
@@ -345,9 +346,10 @@ Format output dalam JSON murni dengan key:
               generationConfig: {
                 responseMimeType: "application/json",
                 temperature: 0.85,
+                maxOutputTokens: 8192,
               },
             }),
-            signal: AbortSignal.timeout(30000),
+            signal: AbortSignal.timeout(35000),
           }
         );
       } catch (err) {
