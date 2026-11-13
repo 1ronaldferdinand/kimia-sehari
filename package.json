@@ -1,0 +1,11 @@
+{
+  "name": "kimia-sehari-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --check api/cron.js",
+    "local": "node --env-file-if-exists=.env scripts/run-local.js"
+  },
+  "dependencies": {}
+}
