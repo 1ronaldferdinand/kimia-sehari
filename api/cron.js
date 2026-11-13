@@ -37,60 +37,127 @@ function getDailyFocus(date = new Date()) {
     ];
   return {
     dateStr: date.toISOString().slice(0, 10),
-    dayOfYear,
     category,
     angle,
   };
 }
 
-// Curated 1080x1920 Unsplash visual pools (Macro -> Microscope/Lab -> Outro) that never trigger datacenter 402 blocks on JSON2Video.
-const MACRO_IMAGES = [
-  "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=1080&h=1920&q=85",
-];
-
-const MICROSCOPE_IMAGES = [
-  "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1530026405186-ed1f139313f8?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1582719471384-894fbb16e074?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1614935151651-0bea6508db6b?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&w=1080&h=1920&q=85",
-];
-
-const OUTRO_IMAGES = [
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1080&h=1920&q=85",
-  "https://images.unsplash.com/photo-1490818387583-1baba5e638af?auto=format&fit=crop&w=1080&h=1920&q=85",
-];
-
-function selectSceneImages(dayOfYear) {
-  return {
-    scene_1_macro: MACRO_IMAGES[dayOfYear % MACRO_IMAGES.length],
-    scene_2_microscope: MICROSCOPE_IMAGES[dayOfYear % MICROSCOPE_IMAGES.length],
-    scene_3_outro: OUTRO_IMAGES[dayOfYear % OUTRO_IMAGES.length],
-  };
+function sanitizeSvg(rawSvg, fallbackLabel) {
+  if (typeof rawSvg === "string" && rawSvg.includes("<svg")) {
+    return rawSvg.replace(/<script[\s\S]*?<\/script>/gi, "").trim();
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1320">
+    <rect width="1080" height="1320" rx="36" fill="#F5F2EB"/>
+    <circle cx="540" cy="600" r="240" fill="#2E6F40" opacity="0.15"/>
+    <circle cx="540" cy="600" r="160" fill="#5C4033" opacity="0.25"/>
+    <rect x="240" y="555" width="600" height="90" rx="45" fill="#2E6F40"/>
+    <text x="540" y="612" font-family="sans-serif" font-size="34" font-weight="700" fill="#FFFFFF" text-anchor="middle">${fallbackLabel}</text>
+  </svg>`;
 }
 
-function buildJson2VideoMovie(content, images) {
+function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, zoomType) {
+  const animCss =
+    zoomType === "microscope"
+      ? "@keyframes camMove { 0% { transform: scale(1) translateY(0); } 100% { transform: scale(1.14) translateY(-16px); } }"
+      : zoomType === "outro"
+        ? "@keyframes camMove { 0% { transform: scale(1.1); } 100% { transform: scale(1); } }"
+        : "@keyframes camMove { 0% { transform: scale(1); } 100% { transform: scale(1.08); } }";
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1080px;
+    height: 1920px;
+    background: linear-gradient(180deg, #EAF4F8 0%, #F7F4EC 48%, #EFE9DC 100%);
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .header {
+    width: 960px;
+    margin-top: 90px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    z-index: 2;
+  }
+  .badge {
+    background: #2E6F40;
+    color: #FFFFFF;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    padding: 12px 30px;
+    border-radius: 999px;
+    text-transform: uppercase;
+  }
+  .title {
+    color: #3B281E;
+    font-size: 46px;
+    font-weight: 900;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .stage {
+    width: 1020px;
+    height: 1280px;
+    margin-top: 32px;
+    border-radius: 40px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(59, 40, 30, 0.14);
+    border: 6px solid #FFFFFF;
+    background: #FFFFFF;
+  }
+  .cam {
+    width: 100%;
+    height: 100%;
+    animation: camMove 7s ease-in-out forwards;
+  }
+  .cam svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  ${animCss}
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="badge">${sceneBadge}</div>
+    <div class="title">${topicTitle}</div>
+  </div>
+  <div class="stage">
+    <div class="cam">${svgMarkup}</div>
+  </div>
+</body>
+</html>`;
+}
+
+function buildJson2VideoMovie(content) {
+  const shortTitle = content.judul_pendek || content.topik;
+  const svg1 = sanitizeSvg(content.scene_1_svg, "ADEGAN 1: FENOMENA NYATA");
+  const svg2 = sanitizeSvg(content.scene_2_svg, "ADEGAN 2: ZOOM MIKROSKOP");
+  const svg3 = sanitizeSvg(content.scene_3_svg, "ADEGAN 3: KESIMPULAN");
+
   return {
     resolution: "instagram-story",
     quality: "high",
     scenes: [
       {
-        comment: "Scene 1 - Macro Hook",
+        comment: "Scene 1 - 2D Vector Macro Diagram",
         elements: [
           {
-            type: "image",
-            src: images.scene_1_macro,
-            zoom: 5,
+            type: "html",
+            html: buildSceneHtml(svg1, shortTitle, "Kimia Sehari • Fakta Alam", "macro"),
+            width: 1080,
+            height: 1920,
           },
           {
             type: "voice",
@@ -101,12 +168,13 @@ function buildJson2VideoMovie(content, images) {
         ],
       },
       {
-        comment: "Scene 2 - Microscope / Molecular Zoom",
+        comment: "Scene 2 - 2D Vector Microscope Zoom Diagram",
         elements: [
           {
-            type: "image",
-            src: images.scene_2_microscope,
-            zoom: 8,
+            type: "html",
+            html: buildSceneHtml(svg2, shortTitle, "Zoom Mikroskop & Molekul", "microscope"),
+            width: 1080,
+            height: 1920,
           },
           {
             type: "voice",
@@ -117,12 +185,13 @@ function buildJson2VideoMovie(content, images) {
         ],
       },
       {
-        comment: "Scene 3 - Everyday Conclusion",
+        comment: "Scene 3 - 2D Vector Summary Diagram",
         elements: [
           {
-            type: "image",
-            src: images.scene_3_outro,
-            zoom: 4,
+            type: "html",
+            html: buildSceneHtml(svg3, shortTitle, "Kesimpulan Sains", "outro"),
+            width: 1080,
+            height: 1920,
           },
           {
             type: "voice",
@@ -139,10 +208,15 @@ function buildJson2VideoMovie(content, images) {
       {
         type: "subtitles",
         settings: {
-          style: "classic",
-          "font-size": 42,
-          "word-color": "#4CAF50",
-          "line-color": "#FFFFFF",
+          style: "boxed-word",
+          "font-family": "Montserrat",
+          "font-size": 52,
+          "word-color": "#FFFFFF",
+          "line-color": "#E2E8F0",
+          "box-color": "#1E293B",
+          "outline-color": "#000000",
+          position: "bottom-center",
+          "max-words-per-line": 3,
         },
       },
     ],
@@ -205,7 +279,7 @@ export default async function handler(req, res) {
       throw new Error("GEMINI_API_KEY belum disetel di environment variables.");
     }
 
-    const { dateStr, dayOfYear, category, angle } = getDailyFocus();
+    const { dateStr, category, angle } = getDailyFocus();
     const recentTopics = await getRecentTopics(
       UPSTASH_REDIS_REST_URL,
       UPSTASH_REDIS_REST_TOKEN
@@ -220,23 +294,33 @@ export default async function handler(req, res) {
     const prompt = `Tanggal edisi: ${dateStr}.
 Buatkan satu topik riset kimia sehari-hari di alam dengan fokus tema "${category}" dari sudut pandang "${angle}".${exclusionLine}
 Gunakan gaya bahasa "Kimia Sehari": ramah, santai, edukatif.
-Konsep visual wajib terdiri dari 3 adegan berurutan (Makro -> Zoom Mikroskop/Molekuler -> Kesimpulan) dengan palet warna Cokelat, Hijau, dan Putih.
-Format output dalam JSON dengan key:
-- "topik": Judul konten yang spesifik
+
+Selain naskah, buatkan 3 ilustrasi infografis vektor 2D (SVG) bergaya diagram edukasi penampang (2D flat vector cross-section infographic):
+- Gunakan viewBox="0 0 1080 1320" pada setiap <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1320">.
+- Gunakan palet warna bumi yang rapi: Cokelat tanah/kayu (#6D4C41, #4E342E), Hijau alam/enzim (#2E6F40, #4CAF50), Biru air/langit (#E0F2FE, #0284C7), Putih bersih (#FFFFFF), dan aksen Kuning/Merah (#F59E0B, #DC2626) untuk kotak highlight atau panah.
+- Wajib sertakan label pil membulat (<rect rx="18"> + <text font-family="sans-serif" font-weight="700" font-size="24" fill="#FFFFFF">) berbahasa Indonesia langsung di atas komponen diagramnya (contoh: "BATU KARANG", "MOLEKUL AIR", "IKATAN HIDROGEN", "LAPISAN PELINDUNG").
+- Adegan 1 (scene_1_svg): Diagram penampang objek/kejadian nyata sehari-hari dari dekat + kotak highlight kuning/oranye putus-putus di bagian yang akan dizoom.
+- Adegan 2 (scene_2_svg): Tampilan lingkaran kaca pembesar/mikroskop besar di tengah yang memperlihatkan molekul, atom, bakteri, atau ikatan kimia secara jelas + panah reaksi + label pil.
+- Adegan 3 (scene_3_svg): Diagram ringkasan sistem utuh atau hasil manfaatnya di kehidupan sehari-hari dengan label pil.
+- Pastikan semua elemen SVG rapi, tidak keluar dari batas 0..1080 dan 0..1320, dan tanpa tag <script>.
+
+Format output dalam JSON murni dengan key:
+- "topik": Judul lengkap konten
+- "judul_pendek": Judul singkat maksimal 6 kata untuk header video
 - "hook": Kalimat pembuka narasi suara (3-4 detik pertama) yang memancing rasa penasaran
 - "penjelasan": Penjelasan singkat sains mikroskopis/molekulernya untuk narasi suara (maksimal 2-3 kalimat)
 - "kesimpulan": 1 kalimat penutup singkat untuk narasi suara akhir video
-- "konsep_visual": Ringkasan Bahasa Indonesia alur visual dari adegan nyata lalu zoom masuk ke mikroskop
-- "scene_1_prompt_en": Prompt gambar Bahasa Inggris (15-20 kata) untuk Adegan 1 (aktivitas/objek nyata sehari-hari dari dekat)
-- "scene_2_prompt_en": Prompt gambar Bahasa Inggris (15-20 kata) untuk Adegan 2 (tampilan zoom mikroskop/ikatan molekul di dalam objek Adegan 1)
-- "scene_3_prompt_en": Prompt gambar Bahasa Inggris (15-20 kata) untuk Adegan 3 (hasil akhir fenomena alam/keseharian yang indah)
+- "konsep_visual": Ringkasan Bahasa Indonesia alur diagram dari Adegan 1 ke Adegan 3
+- "scene_1_svg": Kode string SVG lengkap untuk Adegan 1
+- "scene_2_svg": Kode string SVG lengkap untuk Adegan 2 (Zoom Mikroskop)
+- "scene_3_svg": Kode string SVG lengkap untuk Adegan 3 (Kesimpulan)
 - "caption": Caption Instagram & TikTok lengkap dengan hashtag sains`;
 
     const modelCandidates = process.env.GEMINI_MODEL
       ? [
           process.env.GEMINI_MODEL,
-          "gemini-flash-lite-latest",
           "gemini-flash-latest",
+          "gemini-flash-lite-latest",
         ]
       : [
           "gemini-flash-lite-latest",
@@ -260,10 +344,10 @@ Format output dalam JSON dengan key:
               contents: [{ parts: [{ text: prompt }] }],
               generationConfig: {
                 responseMimeType: "application/json",
-                temperature: 0.9,
+                temperature: 0.85,
               },
             }),
-            signal: AbortSignal.timeout(20000),
+            signal: AbortSignal.timeout(30000),
           }
         );
       } catch (err) {
@@ -293,13 +377,16 @@ Format output dalam JSON dengan key:
     }
 
     const content = JSON.parse(rawText);
+    const json2videoMovie = buildJson2VideoMovie(content);
 
-    const images = selectSceneImages(dayOfYear);
-
-    const json2videoMovie = buildJson2VideoMovie(content, images);
     const enrichedPayload = {
-      ...content,
-      images,
+      topik: content.topik,
+      judul_pendek: content.judul_pendek,
+      hook: content.hook,
+      penjelasan: content.penjelasan,
+      kesimpulan: content.kesimpulan,
+      konsep_visual: content.konsep_visual,
+      caption: content.caption,
       json2video_movie: json2videoMovie,
       json2video_json_string: JSON.stringify(json2videoMovie),
     };
@@ -346,10 +433,7 @@ Format output dalam JSON dengan key:
         `🔬 Mikroskop (Scene 2): ${content.penjelasan || "-"}`,
         `✨ Penutup (Scene 3): ${content.kesimpulan || "-"}`,
         "",
-        `🎨 Alur Visual: ${content.konsep_visual || "-"}`,
-        `🖼️ Gambar 1 (Makro): ${images.scene_1_macro}`,
-        `🖼️ Gambar 2 (Mikroskop): ${images.scene_2_microscope}`,
-        `🖼️ Gambar 3 (Outro): ${images.scene_3_outro}`,
+        `🎨 Alur Diagram: ${content.konsep_visual || "-"}`,
         "",
         "📝 Caption:",
         content.caption || "-",
