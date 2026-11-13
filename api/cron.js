@@ -42,26 +42,141 @@ function getDailyFocus(date = new Date()) {
   };
 }
 
-function sanitizeSvg(rawSvg, fallbackLabel) {
-  if (typeof rawSvg === "string" && rawSvg.includes("<svg")) {
-    return rawSvg.replace(/<script[\s\S]*?<\/script>/gi, "").trim();
-  }
+function escapeXml(str = "") {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function pill(x, y, text, bg = "#2E6F40", width = 280) {
+  const label = escapeXml(String(text).toUpperCase().slice(0, 26));
+  const rx = x - width / 2;
+  return `
+    <g>
+      <rect x="${rx}" y="${y - 26}" width="${width}" height="52" rx="26" fill="${bg}" />
+      <text x="${x}" y="${y + 9}" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" fill="#FFFFFF" text-anchor="middle">${label}</text>
+    </g>`;
+}
+
+function buildMacroSvg(content) {
+  const labels = content.macro_labels || ["OBJEK ALAM", "REAKSI KIMIA", "AREA ZOOM"];
+  const l1 = labels[0] || "OBJEK ALAM";
+  const l2 = labels[1] || "ELEMEN SEKITAR";
+  const l3 = labels[2] || "TITIK REAKSI";
+
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1320">
-    <rect width="1080" height="1320" rx="36" fill="#F5F2EB"/>
-    <circle cx="540" cy="600" r="240" fill="#2E6F40" opacity="0.15"/>
-    <circle cx="540" cy="600" r="160" fill="#5C4033" opacity="0.25"/>
-    <rect x="240" y="555" width="600" height="90" rx="45" fill="#2E6F40"/>
-    <text x="540" y="612" font-family="sans-serif" font-size="34" font-weight="700" fill="#FFFFFF" text-anchor="middle">${fallbackLabel}</text>
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#D8EEF9"/>
+        <stop offset="100%" stop-color="#F7F4EC"/>
+      </linearGradient>
+    </defs>
+    <rect width="1080" height="1320" fill="url(#sky)"/>
+    <!-- Environment layers -->
+    <path d="M0 780 Q270 720 540 770 T1080 750 L1080 1320 L0 1320 Z" fill="#6D4C41"/>
+    <path d="M0 780 Q270 720 540 770 T1080 750 L1080 825 Q810 845 540 825 T0 835 Z" fill="#4CAF50"/>
+    <!-- Sun / energy source -->
+    <circle cx="880" cy="180" r="85" fill="#FDE68A" opacity="0.8"/>
+    <circle cx="880" cy="180" r="55" fill="#F59E0B"/>
+    <!-- Central subject cross-section -->
+    <g transform="translate(540, 620)">
+      <ellipse cx="0" cy="160" rx="280" ry="70" fill="#4E342E" opacity="0.25"/>
+      <path d="M-210 140 C-230 -40, -110 -180, 0 -180 C110 -180, 230 -40, 210 140 Z" fill="#8D6E63" stroke="#4E342E" stroke-width="10"/>
+      <path d="M-140 130 C-150 -10, -70 -110, 0 -110 C70 -110, 150 -10, 140 130 Z" fill="#A1887F"/>
+      <!-- Active reaction zone highlight -->
+      <rect x="-150" y="-120" width="300" height="230" rx="28" fill="none" stroke="#F59E0B" stroke-width="10" stroke-dasharray="22 14"/>
+    </g>
+    <!-- Reaction arrows -->
+    <path d="M240 420 Q340 480 410 530" fill="none" stroke="#0284C7" stroke-width="8" stroke-linecap="round" stroke-dasharray="14 10"/>
+    <polygon points="420,538 392,535 408,512" fill="#0284C7"/>
+    <path d="M840 420 Q740 480 670 530" fill="none" stroke="#2E6F40" stroke-width="8" stroke-linecap="round" stroke-dasharray="14 10"/>
+    <polygon points="660,538 672,512 688,535" fill="#2E6F40"/>
+    ${pill(240, 380, l2, "#0284C7", 300)}
+    ${pill(820, 380, l1, "#2E6F40", 300)}
+    ${pill(540, 930, l3, "#DC2626", 340)}
+  </svg>`;
+}
+
+function buildMicroscopeSvg(content) {
+  const mols = content.micro_molecules || ["MOLEKUL A", "MOLEKUL B", "IKATAN KIMIA"];
+  const m1 = mols[0] || "MOLEKUL A";
+  const m2 = mols[1] || "MOLEKUL B";
+  const m3 = mols[2] || "IKATAN PELINDUNG";
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1320">
+    <rect width="1080" height="1320" fill="#1E293B"/>
+    <!-- Subtle lab grid -->
+    <g stroke="#334155" stroke-width="2" opacity="0.5">
+      <line x1="0" y1="330" x2="1080" y2="330"/>
+      <line x1="0" y1="660" x2="1080" y2="660"/>
+      <line x1="0" y1="990" x2="1080" y2="990"/>
+      <line x1="270" y1="0" x2="270" y2="1320"/>
+      <line x1="540" y1="0" x2="540" y2="1320"/>
+      <line x1="810" y1="0" x2="810" y2="1320"/>
+    </g>
+    <!-- Microscope lens -->
+    <circle cx="540" cy="630" r="430" fill="#F7F4EC" stroke="#4CAF50" stroke-width="18"/>
+    <circle cx="540" cy="630" r="405" fill="none" stroke="#2E6F40" stroke-width="6" stroke-dasharray="16 12"/>
+    <!-- Molecular bonds inside lens -->
+    <line x1="360" y1="530" x2="540" y2="630" stroke="#F59E0B" stroke-width="14" stroke-linecap="round"/>
+    <line x1="720" y1="530" x2="540" y2="630" stroke="#F59E0B" stroke-width="14" stroke-linecap="round"/>
+    <line x1="540" y1="630" x2="540" y2="810" stroke="#0284C7" stroke-width="14" stroke-dasharray="18 12" stroke-linecap="round"/>
+    <!-- Molecule nodes -->
+    <circle cx="360" cy="530" r="78" fill="#6D4C41" stroke="#FFFFFF" stroke-width="8"/>
+    <circle cx="720" cy="530" r="78" fill="#2E6F40" stroke="#FFFFFF" stroke-width="8"/>
+    <circle cx="540" cy="630" r="96" fill="#0284C7" stroke="#FFFFFF" stroke-width="10"/>
+    <circle cx="540" cy="830" r="64" fill="#F59E0B" stroke="#FFFFFF" stroke-width="8"/>
+    <!-- Small floating particles -->
+    <circle cx="290" cy="740" r="24" fill="#4CAF50" opacity="0.7"/>
+    <circle cx="790" cy="730" r="28" fill="#0284C7" opacity="0.7"/>
+    <circle cx="540" cy="360" r="22" fill="#6D4C41" opacity="0.7"/>
+    ${pill(320, 405, m1, "#5C4033", 300)}
+    ${pill(760, 405, m2, "#2E6F40", 300)}
+    ${pill(540, 965, m3, "#DC2626", 360)}
+  </svg>`;
+}
+
+function buildOutroSvg(content) {
+  const steps = content.summary_points || ["PROSES ALAMI", "REAKSI STABIL", "MANFAAT NYATA"];
+  const s1 = steps[0] || "PROSES ALAMI";
+  const s2 = steps[1] || "REAKSI KIMIA";
+  const s3 = steps[2] || "HASIL NYATA";
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1320">
+    <rect width="1080" height="1320" fill="#F5F2EB"/>
+    <!-- 3-step vertical flow cards -->
+    <rect x="110" y="130" width="860" height="240" rx="34" fill="#FFFFFF" stroke="#6D4C41" stroke-width="6"/>
+    <circle cx="215" cy="250" r="52" fill="#6D4C41"/>
+    <text x="215" y="268" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="900" fill="#FFFFFF" text-anchor="middle">1</text>
+    <text x="305" y="264" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800" fill="#3B281E">${escapeXml(s1.slice(0, 32))}</text>
+
+    <path d="M540 385 L540 455" stroke="#2E6F40" stroke-width="10" stroke-linecap="round"/>
+    <polygon points="540,475 520,445 560,445" fill="#2E6F40"/>
+
+    <rect x="110" y="490" width="860" height="240" rx="34" fill="#FFFFFF" stroke="#2E6F40" stroke-width="6"/>
+    <circle cx="215" cy="610" r="52" fill="#2E6F40"/>
+    <text x="215" y="628" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="900" fill="#FFFFFF" text-anchor="middle">2</text>
+    <text x="305" y="624" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800" fill="#3B281E">${escapeXml(s2.slice(0, 32))}</text>
+
+    <path d="M540 745 L540 815" stroke="#2E6F40" stroke-width="10" stroke-linecap="round"/>
+    <polygon points="540,835 520,805 560,805" fill="#2E6F40"/>
+
+    <rect x="110" y="850" width="860" height="240" rx="34" fill="#2E6F40"/>
+    <circle cx="215" cy="970" r="52" fill="#FFFFFF"/>
+    <text x="215" y="988" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="900" fill="#2E6F40" text-anchor="middle">3</text>
+    <text x="305" y="984" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800" fill="#FFFFFF">${escapeXml(s3.slice(0, 32))}</text>
   </svg>`;
 }
 
 function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, zoomType) {
   const animCss =
     zoomType === "microscope"
-      ? "@keyframes camMove { 0% { transform: scale(1) translateY(0); } 100% { transform: scale(1.14) translateY(-16px); } }"
+      ? "@keyframes camMove { 0% { transform: scale(1); } 100% { transform: scale(1.14); } }"
       : zoomType === "outro"
-        ? "@keyframes camMove { 0% { transform: scale(1.1); } 100% { transform: scale(1); } }"
-        : "@keyframes camMove { 0% { transform: scale(1); } 100% { transform: scale(1.08); } }";
+        ? "@keyframes camMove { 0% { transform: scale(1.06); } 100% { transform: scale(1); } }"
+        : "@keyframes camMove { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }";
 
   return `<!DOCTYPE html>
 <html>
@@ -72,7 +187,7 @@ function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, zoomType) {
   body {
     width: 1080px;
     height: 1920px;
-    background: linear-gradient(180deg, #EAF4F8 0%, #F7F4EC 48%, #EFE9DC 100%);
+    background: linear-gradient(180deg, #EAF4F8 0%, #F7F4EC 50%, #EFE9DC 100%);
     font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
     overflow: hidden;
     display: flex;
@@ -81,12 +196,11 @@ function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, zoomType) {
   }
   .header {
     width: 960px;
-    margin-top: 90px;
+    margin-top: 88px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
-    z-index: 2;
+    gap: 14px;
   }
   .badge {
     background: #2E6F40;
@@ -108,7 +222,7 @@ function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, zoomType) {
   .stage {
     width: 1020px;
     height: 1280px;
-    margin-top: 32px;
+    margin-top: 30px;
     border-radius: 40px;
     overflow: hidden;
     box-shadow: 0 24px 60px rgba(59, 40, 30, 0.14);
@@ -130,8 +244,8 @@ function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, zoomType) {
 </head>
 <body>
   <div class="header">
-    <div class="badge">${sceneBadge}</div>
-    <div class="title">${topicTitle}</div>
+    <div class="badge">${escapeXml(sceneBadge)}</div>
+    <div class="title">${escapeXml(topicTitle)}</div>
   </div>
   <div class="stage">
     <div class="cam">${svgMarkup}</div>
@@ -142,9 +256,6 @@ function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, zoomType) {
 
 function buildJson2VideoMovie(content) {
   const shortTitle = content.judul_pendek || content.topik;
-  const svg1 = sanitizeSvg(content.scene_1_svg, "ADEGAN 1: FENOMENA NYATA");
-  const svg2 = sanitizeSvg(content.scene_2_svg, "ADEGAN 2: ZOOM MIKROSKOP");
-  const svg3 = sanitizeSvg(content.scene_3_svg, "ADEGAN 3: KESIMPULAN");
 
   return {
     resolution: "instagram-story",
@@ -155,7 +266,12 @@ function buildJson2VideoMovie(content) {
         elements: [
           {
             type: "html",
-            html: buildSceneHtml(svg1, shortTitle, "Kimia Sehari • Fakta Alam", "macro"),
+            html: buildSceneHtml(
+              buildMacroSvg(content),
+              shortTitle,
+              "Kimia Sehari • Fakta Alam",
+              "macro"
+            ),
             width: 1080,
             height: 1920,
           },
@@ -172,7 +288,12 @@ function buildJson2VideoMovie(content) {
         elements: [
           {
             type: "html",
-            html: buildSceneHtml(svg2, shortTitle, "Zoom Mikroskop & Molekul", "microscope"),
+            html: buildSceneHtml(
+              buildMicroscopeSvg(content),
+              shortTitle,
+              "Zoom Mikroskop & Molekul",
+              "microscope"
+            ),
             width: 1080,
             height: 1920,
           },
@@ -189,7 +310,12 @@ function buildJson2VideoMovie(content) {
         elements: [
           {
             type: "html",
-            html: buildSceneHtml(svg3, shortTitle, "Kesimpulan Sains", "outro"),
+            html: buildSceneHtml(
+              buildOutroSvg(content),
+              shortTitle,
+              "Ringkasan Reaksi Kimia",
+              "outro"
+            ),
             width: 1080,
             height: 1920,
           },
@@ -295,38 +421,28 @@ export default async function handler(req, res) {
 Buatkan satu topik riset kimia sehari-hari di alam dengan fokus tema "${category}" dari sudut pandang "${angle}".${exclusionLine}
 Gunakan gaya bahasa "Kimia Sehari": ramah, santai, edukatif.
 
-Selain naskah, buatkan 3 ilustrasi infografis vektor 2D (SVG) bergaya diagram edukasi penampang (2D flat vector cross-section infographic):
-- Gunakan viewBox="0 0 1080 1320" pada setiap <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1320">.
-- Gunakan palet warna bumi yang rapi: Cokelat tanah/kayu (#6D4C41, #4E342E), Hijau alam/enzim (#2E6F40, #4CAF50), Biru air/langit (#E0F2FE, #0284C7), Putih bersih (#FFFFFF), dan aksen Kuning/Merah (#F59E0B, #DC2626) untuk kotak highlight atau panah.
-- Wajib sertakan label pil membulat (<rect rx="18"> + <text font-family="sans-serif" font-weight="700" font-size="24" fill="#FFFFFF">) berbahasa Indonesia langsung di atas komponen diagramnya (contoh: "BATU KARANG", "MOLEKUL AIR", "IKATAN HIDROGEN", "LAPISAN PELINDUNG").
-- Adegan 1 (scene_1_svg): Diagram penampang objek/kejadian nyata sehari-hari dari dekat + kotak highlight kuning/oranye putus-putus di bagian yang akan dizoom.
-- Adegan 2 (scene_2_svg): Tampilan lingkaran kaca pembesar/mikroskop besar di tengah yang memperlihatkan molekul, atom, bakteri, atau ikatan kimia secara jelas + panah reaksi + label pil.
-- Adegan 3 (scene_3_svg): Diagram ringkasan sistem utuh atau hasil manfaatnya di kehidupan sehari-hari dengan label pil.
-- Pastikan semua elemen SVG rapi, tidak keluar dari batas 0..1080 dan 0..1320, dan tanpa tag <script>.
-
 Format output dalam JSON murni dengan key:
 - "topik": Judul lengkap konten
 - "judul_pendek": Judul singkat maksimal 6 kata untuk header video
 - "hook": Kalimat pembuka narasi suara (3-4 detik pertama) yang memancing rasa penasaran
 - "penjelasan": Penjelasan singkat sains mikroskopis/molekulernya untuk narasi suara (maksimal 2-3 kalimat)
 - "kesimpulan": 1 kalimat penutup singkat untuk narasi suara akhir video
-- "konsep_visual": Ringkasan Bahasa Indonesia alur diagram dari Adegan 1 ke Adegan 3
-- "scene_1_svg": Kode string SVG lengkap untuk Adegan 1
-- "scene_2_svg": Kode string SVG lengkap untuk Adegan 2 (Zoom Mikroskop)
-- "scene_3_svg": Kode string SVG lengkap untuk Adegan 3 (Kesimpulan)
+- "macro_labels": Array berisi tepat 3 label singkat (maks 3 kata, huruf kapital) untuk diagram adegan 1 (contoh: ["BATU KARANG", "AIR LAUT", "TITIK EROSI"])
+- "micro_molecules": Array berisi tepat 3 label molekul/reaksi singkat (maks 3 kata, huruf kapital) untuk diagram mikroskop adegan 2 (contoh: ["KALSIUM KARBONAT", "MOLEKUL AIR", "IKATAN HIDROGEN"])
+- "summary_points": Array berisi tepat 3 poin alur singkat (maks 4 kata) untuk diagram kesimpulan adegan 3
 - "caption": Caption Instagram & TikTok lengkap dengan hashtag sains`;
 
     const modelCandidates = process.env.GEMINI_MODEL
       ? [
           process.env.GEMINI_MODEL,
+          "gemini-flash-lite-latest",
           "gemini-3.8-flash",
           "gemini-flash-latest",
-          "gemini-flash-lite-latest",
         ]
       : [
+          "gemini-flash-lite-latest",
           "gemini-3.8-flash",
           "gemini-flash-latest",
-          "gemini-flash-lite-latest",
         ];
 
     let aiResponse;
@@ -346,10 +462,9 @@ Format output dalam JSON murni dengan key:
               generationConfig: {
                 responseMimeType: "application/json",
                 temperature: 0.85,
-                maxOutputTokens: 8192,
               },
             }),
-            signal: AbortSignal.timeout(35000),
+            signal: AbortSignal.timeout(18000),
           }
         );
       } catch (err) {
@@ -387,7 +502,9 @@ Format output dalam JSON murni dengan key:
       hook: content.hook,
       penjelasan: content.penjelasan,
       kesimpulan: content.kesimpulan,
-      konsep_visual: content.konsep_visual,
+      macro_labels: content.macro_labels,
+      micro_molecules: content.micro_molecules,
+      summary_points: content.summary_points,
       caption: content.caption,
       json2video_movie: json2videoMovie,
       json2video_json_string: JSON.stringify(json2videoMovie),
@@ -413,7 +530,7 @@ Format output dalam JSON murni dengan key:
             palette: ["Cokelat", "Hijau", "Putih"],
             payload: enrichedPayload,
           }),
-          signal: AbortSignal.timeout(25000),
+          signal: AbortSignal.timeout(15000),
         })
           .catch((err) => {
             throw new Error(`Make.com Webhook timeout/error: ${err.message}`);
@@ -435,8 +552,6 @@ Format output dalam JSON murni dengan key:
         `🔬 Mikroskop (Scene 2): ${content.penjelasan || "-"}`,
         `✨ Penutup (Scene 3): ${content.kesimpulan || "-"}`,
         "",
-        `🎨 Alur Diagram: ${content.konsep_visual || "-"}`,
-        "",
         "📝 Caption:",
         content.caption || "-",
       ].join("\n");
@@ -452,7 +567,7 @@ Format output dalam JSON murni dengan key:
               chat_id: TELEGRAM_CHAT_ID,
               text: telegramMessage,
             }),
-            signal: AbortSignal.timeout(25000),
+            signal: AbortSignal.timeout(15000),
           }
         )
           .catch((err) => {
