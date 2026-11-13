@@ -133,16 +133,46 @@ Sebelum klik tombol Deploy, buka bagian **Environment Variables** dan tambahkan 
    - Modul Webhook di Make.com akan berubah menjadi centang hijau **Successfully determined**.
 
 ### Struktur Data yang Diterima Make.com
-Setelah status Webhook menjadi **Successfully determined**, klik tanda **`+`** di sebelah kanan modul Webhook untuk menambahkan modul tujuan (misal: **Creatomate**, **Canva**, **Google Sheets**, **Instagram for Business**, atau **TikTok**).
+Setelah status Webhook menjadi **Successfully determined**, jika struktur datanya berasal dari versi lama, klik kanan modul Webhook -> pilih **Redetermine data structure** -> lalu panggil sekali lagi URL `/api/cron` di browser agar variabel video terbaru ikut terbaca.
 
-Kamu bisa langsung memilih variabel (mapping) dari modul Webhook dengan struktur berikut:
-- `brand` -> `"Kimia Sehari"`
-- `palette[]` -> `["Cokelat", "Hijau", "Putih"]`
+Variabel yang dikirim oleh Vercel ke Make.com:
 - `payload.topik` -> Judul topik kimia harian
-- `payload.hook` -> Kalimat pembuka 3 detik pertama Reels/TikTok
-- `payload.penjelasan` -> Penjelasan sains singkat (maksimal 3 kalimat)
-- `payload.konsep_visual` -> Arahan visual dengan palet Cokelat, Hijau, dan Putih
+- `payload.hook` -> Narasi pembuka (Adegan 1: Makro)
+- `payload.penjelasan` -> Narasi penjelasan sains (Adegan 2: Zoom Mikroskop/Molekuler)
+- `payload.kesimpulan` -> Narasi penutup singkat (Adegan 3: Kesimpulan)
+- `payload.images.scene_1_macro` -> URL Gambar AI Gratis Adegan 1 (Aktivitas/Objek Nyata)
+- `payload.images.scene_2_microscope` -> URL Gambar AI Gratis Adegan 2 (Zoom Mikroskop/Molekul)
+- `payload.images.scene_3_outro` -> URL Gambar AI Gratis Adegan 3 (Kesimpulan Visual)
+- `payload.json2video_json_string` -> Konfigurasi JSON lengkap siap pakai untuk modul **JSON2Video**
 - `payload.caption` -> Caption lengkap beserta hashtag
+
+---
+
+### Cara Render Video Otomatis Gratis (Pollinations AI + JSON2Video di Make.com)
+
+Solusi ini menggabungkan **Pollinations AI** (generator ilustrasi 3 adegan Makro -> Mikroskop -> Kesimpulan yang 100% gratis tanpa API key) dengan **JSON2Video** (kuota gratis 600 detik video, sudah termasuk animasi kamera *Zoom-In*, suara narator Bahasa Indonesia, dan *subtitle* otomatis):
+
+#### 1. Ambil API Key Gratis JSON2Video
+1. Daftar akun gratis di [json2video.com](https://json2video.com/).
+2. Masuk ke menu **API Keys** di dashboard JSON2Video, lalu salin **API Key** kamu.
+
+#### 2. Pasang Modul JSON2Video di Make.com
+1. Di sebelah kanan modul **Custom Webhook** pada Make.com, klik tanda **`+`**, cari aplikasi **JSON2Video**.
+2. Pilih aksi **Create a Movie from JSON** (atau jika belum ada, gunakan modul **HTTP -> Make a request** ke `https://api.json2video.com/v2/movies`).
+3. Jika menggunakan modul resmi **JSON2Video (Create a Movie from JSON)**:
+   - Hubungkan akun dengan memasukkan API Key JSON2Video kamu.
+   - Pada kolom **Movie JSON**, cukup masukkan 1 variabel dari Webhook:
+     `payload.json2video_json_string`
+   - Klik **OK**.
+4. Tambahkan modul kedua dari JSON2Video tepat di sebelahnya: **Wait for a Movie to Render**:
+   - Pada kolom **Project ID**, pilih variabel `project` yang keluar dari modul JSON2Video pertama.
+   - Modul ini akan menunggu sekitar 20 sampai 40 detik sampai file `.mp4` selesai dibuat dan mengeluarkan variabel **`movie.url`** (link video `.mp4` yang sudah jadi).
+
+#### 3. Kirim Video `.mp4` ke Telegram atau Instagram Reels
+1. Klik tanda **`+`** setelah modul *Wait for a Movie to Render*.
+2. Pilih **Telegram Bot -> Send a Video** (untuk cek hasil video di HP kamu) atau **Instagram for Business -> Create a Reel Post**:
+   - **Video URL / File:** pilih variabel `movie.url` dari modul JSON2Video.
+   - **Caption:** pilih variabel `payload.caption` dari modul Webhook.
 
 Setelah semua modul di Make.com terhubung:
 1. Klik ikon **Save** (simpan) di bawah layar Make.com.
