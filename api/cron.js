@@ -121,34 +121,61 @@ Format output dalam JSON dengan key:
 - "konsep_visual": Deskripsi singkat adegan visual dengan palet Cokelat, Hijau, Putih
 - "caption": Caption Instagram & TikTok lengkap dengan hashtag sains`;
 
-    const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
+    const modelCandidates = process.env.GEMINI_MODEL
+      ? [
+          process.env.GEMINI_MODEL,
+          "gemini-flash-lite-latest",
+          "gemini-flash-latest",
+        ]
+      : [
+          "gemini-flash-latest",
+          "gemini-flash-lite-latest",
+          "gemini-pro-latest",
+        ];
+
     let aiResponse;
-    try {
-      aiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              responseMimeType: "application/json",
-              temperature: 0.9,
-              thinkingConfig: {
-                thinkingBudget: 0,
+    let usedModel = modelCandidates[0];
+    let lastError = "";
+
+    for (const model of modelCandidates) {
+      usedModel = model;
+      try {
+        aiResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                responseMimeType: "application/json",
+                temperature: 0.9,
+                ...(model.includes("flash")
+                  ? { thinkingConfig: { thinkingBudget: 0 } }
+                  : {}),
               },
-            },
-          }),
-          signal: AbortSignal.timeout(45000),
-        }
-      );
-    } catch (err) {
-      throw new Error(`Gemini API timeout/network error (${model}): ${err.message}`);
+            }),
+            signal: AbortSignal.timeout(25000),
+          }
+        );
+      } catch (err) {
+        lastError = `Gemini API timeout/network error (${model}): ${err.message}`;
+        continue;
+      }
+
+      if (aiResponse.ok) break;
+
+      const errText = await aiResponse.text();
+      lastError = `Gemini API gagal (${aiResponse.status} pada ${model}): ${errText}`;
+
+      // Fail over to the next model on 404 (retired), 429 (rate limit), or 503 (high demand spike).
+      if (![404, 429, 503].includes(aiResponse.status)) {
+        throw new Error(lastError);
+      }
     }
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      throw new Error(`Gemini API gagal (${aiResponse.status}): ${errText}`);
+    if (!aiResponse || !aiResponse.ok) {
+      throw new Error(lastError);
     }
 
     const aiData = await aiResponse.json();
@@ -236,7 +263,7 @@ Format output dalam JSON dengan key:
     return res.status(200).json({
       success: true,
       message: "Pipeline Kimia Sehari berhasil dieksekusi!",
-      theme: { date: dateStr, category, angle },
+      theme: { date: dateStr, category, angle, model: usedModel },
       data: content,
     });
   } catch (error) {
