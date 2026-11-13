@@ -40,7 +40,14 @@
         "bodyType": "raw",
         "parseResponse": true,
         "contentType": "application/json",
-        "data": "{{1.payload.creatomate_json_string}}"
+        "data": "{{1.payload.creatomate_json_string}}",
+        "gzip": true,
+        "useMtls": false,
+        "shareCookies": false,
+        "followRedirect": true,
+        "useQuerystring": false,
+        "followAllRedirects": false,
+        "rejectUnauthorized": true
       },
       "metadata": {
         "designer": {
@@ -84,7 +91,14 @@
         ],
         "qs": [],
         "bodyType": "raw",
-        "parseResponse": true
+        "parseResponse": true,
+        "gzip": true,
+        "useMtls": false,
+        "shareCookies": false,
+        "followRedirect": true,
+        "useQuerystring": false,
+        "followAllRedirects": false,
+        "rejectUnauthorized": true
       },
       "metadata": {
         "designer": {
