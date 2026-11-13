@@ -50,133 +50,185 @@ function escapeXml(str = "") {
     .replace(/"/g, "&quot;");
 }
 
-function pill(x, y, text, bg = "#2E6F40", width = 280) {
+function pill(x, y, text, bg = "#2E6F40", width = 300, cls = "") {
   const label = escapeXml(String(text).toUpperCase().slice(0, 26));
   const rx = x - width / 2;
   return `
-    <g>
+    <g class="${cls}">
+      <rect x="${rx + 3}" y="${y - 23}" width="${width}" height="52" rx="26" fill="rgba(0,0,0,0.14)" />
       <rect x="${rx}" y="${y - 26}" width="${width}" height="52" rx="26" fill="${bg}" />
-      <text x="${x}" y="${y + 9}" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" fill="#FFFFFF" text-anchor="middle">${label}</text>
+      <text x="${x}" y="${y + 8}" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" fill="#FFFFFF" text-anchor="middle">${label}</text>
     </g>`;
 }
 
-function buildMacroSvg(content) {
-  const labels = content.macro_labels || ["OBJEK ALAM", "REAKSI KIMIA", "AREA ZOOM"];
-  const l1 = labels[0] || "OBJEK ALAM";
-  const l2 = labels[1] || "ELEMEN SEKITAR";
-  const l3 = labels[2] || "TITIK REAKSI";
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1320">
+function buildHookSvg(content) {
+  const labels = content.macro_labels || ["OBJEK ALAM", "ELEMEN ALAM", "TITIK REAKSI"];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1220">
     <defs>
-      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#D8EEF9"/>
+      <linearGradient id="sky1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#D7EEFA"/>
         <stop offset="100%" stop-color="#F7F4EC"/>
       </linearGradient>
     </defs>
-    <rect width="1080" height="1320" fill="url(#sky)"/>
-    <!-- Environment layers -->
-    <path d="M0 780 Q270 720 540 770 T1080 750 L1080 1320 L0 1320 Z" fill="#6D4C41"/>
-    <path d="M0 780 Q270 720 540 770 T1080 750 L1080 825 Q810 845 540 825 T0 835 Z" fill="#4CAF50"/>
-    <!-- Sun / energy source -->
-    <circle cx="880" cy="180" r="85" fill="#FDE68A" opacity="0.8"/>
-    <circle cx="880" cy="180" r="55" fill="#F59E0B"/>
-    <!-- Central subject cross-section -->
-    <g transform="translate(540, 620)">
-      <ellipse cx="0" cy="160" rx="280" ry="70" fill="#4E342E" opacity="0.25"/>
-      <path d="M-210 140 C-230 -40, -110 -180, 0 -180 C110 -180, 230 -40, 210 140 Z" fill="#8D6E63" stroke="#4E342E" stroke-width="10"/>
-      <path d="M-140 130 C-150 -10, -70 -110, 0 -110 C70 -110, 150 -10, 140 130 Z" fill="#A1887F"/>
-      <!-- Active reaction zone highlight -->
-      <rect x="-150" y="-120" width="300" height="230" rx="28" fill="none" stroke="#F59E0B" stroke-width="10" stroke-dasharray="22 14"/>
+    <rect width="1000" height="1220" fill="url(#sky1)"/>
+    <g class="float-slow">
+      <ellipse cx="220" cy="170" rx="90" ry="36" fill="#FFFFFF" opacity="0.85"/>
+      <ellipse cx="270" cy="155" rx="65" ry="30" fill="#FFFFFF" opacity="0.9"/>
+      <circle cx="800" cy="170" r="78" fill="#FDE68A" opacity="0.65"/>
+      <circle cx="800" cy="170" r="52" fill="#F59E0B"/>
     </g>
-    <!-- Reaction arrows -->
-    <path d="M240 420 Q340 480 410 530" fill="none" stroke="#0284C7" stroke-width="8" stroke-linecap="round" stroke-dasharray="14 10"/>
-    <polygon points="420,538 392,535 408,512" fill="#0284C7"/>
-    <path d="M840 420 Q740 480 670 530" fill="none" stroke="#2E6F40" stroke-width="8" stroke-linecap="round" stroke-dasharray="14 10"/>
-    <polygon points="660,538 672,512 688,535" fill="#2E6F40"/>
-    ${pill(240, 380, l2, "#0284C7", 300)}
-    ${pill(820, 380, l1, "#2E6F40", 300)}
-    ${pill(540, 930, l3, "#DC2626", 340)}
+    <path d="M0 720 Q250 670 500 715 T1000 695 L1000 1220 L0 1220 Z" fill="#6D4C41"/>
+    <path d="M0 720 Q250 670 500 715 T1000 695 L1000 765 Q750 785 500 765 T0 775 Z" fill="#4CAF50"/>
+    <g transform="translate(500, 580)">
+      <ellipse cx="0" cy="145" rx="250" ry="58" fill="#3B281E" opacity="0.22"/>
+      <path d="M-190 130 C-210 -35, -100 -165, 0 -165 C100 -165, 210 -35, 190 130 Z" fill="#8D6E63" stroke="#4E342E" stroke-width="10"/>
+      <path d="M-125 120 C-135 -10, -60 -100, 0 -100 C60 -100, 135 -10, 125 120 Z" fill="#A1887F"/>
+      <rect class="pulse-box" x="-145" y="-115" width="290" height="220" rx="28" fill="none" stroke="#F59E0B" stroke-width="9" stroke-dasharray="20 12"/>
+    </g>
+    <g class="float-fast">
+      <circle cx="310" cy="480" r="14" fill="#0284C7" opacity="0.8"/>
+      <circle cx="690" cy="460" r="16" fill="#2E6F40" opacity="0.8"/>
+      <circle cx="500" cy="360" r="12" fill="#F59E0B" opacity="0.85"/>
+    </g>
+    ${pill(230, 330, labels[1] || "ELEMEN ALAM", "#0284C7", 280, "pop-1")}
+    ${pill(770, 330, labels[0] || "OBJEK ALAM", "#2E6F40", 280, "pop-2")}
+    ${pill(500, 880, labels[2] || "TITIK REAKSI", "#DC2626", 330, "pop-3")}
+  </svg>`;
+}
+
+function buildZoomInTransitionSvg(content) {
+  const labels = content.macro_labels || ["OBJEK ALAM", "ELEMEN ALAM", "TITIK REAKSI"];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1220">
+    <rect width="1000" height="1220" fill="#F5F2EB"/>
+    <path d="M0 640 Q250 600 500 635 T1000 620 L1000 1220 L0 1220 Z" fill="#5C4033"/>
+    <path d="M0 640 Q250 600 500 635 T1000 620 L1000 680 L0 680 Z" fill="#2E6F40"/>
+    <!-- Cross-section closeup -->
+    <g transform="translate(500, 610)">
+      <rect x="-340" y="-230" width="680" height="460" rx="44" fill="#EFE9DC" stroke="#4E342E" stroke-width="10"/>
+      <circle class="pulse-box" cx="0" cy="0" r="165" fill="#FFFFFF" stroke="#F59E0B" stroke-width="10" stroke-dasharray="18 10"/>
+      <g class="float-slow">
+        <circle cx="-75" cy="-40" r="34" fill="#6D4C41"/>
+        <circle cx="65" cy="-55" r="30" fill="#0284C7"/>
+        <circle cx="0" cy="65" r="38" fill="#2E6F40"/>
+        <line x1="-50" y1="-20" x2="-12" y2="38" stroke="#F59E0B" stroke-width="8" stroke-linecap="round"/>
+        <line x1="46" y1="-32" x2="14" y2="36" stroke="#0284C7" stroke-width="8" stroke-linecap="round"/>
+      </g>
+    </g>
+    ${pill(260, 260, labels[0] || "PERMUKAAN", "#5C4033", 300, "pop-1")}
+    ${pill(740, 260, labels[1] || "INTERAKSI", "#0284C7", 300, "pop-2")}
+    ${pill(500, 960, `ZOOM KE: ${labels[2] || "STRUKTUR MIKRO"}`, "#DC2626", 440, "pop-3")}
   </svg>`;
 }
 
 function buildMicroscopeSvg(content) {
   const mols = content.micro_molecules || ["MOLEKUL A", "MOLEKUL B", "IKATAN KIMIA"];
-  const m1 = mols[0] || "MOLEKUL A";
-  const m2 = mols[1] || "MOLEKUL B";
-  const m3 = mols[2] || "IKATAN PELINDUNG";
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1320">
-    <rect width="1080" height="1320" fill="#1E293B"/>
-    <!-- Subtle lab grid -->
-    <g stroke="#334155" stroke-width="2" opacity="0.5">
-      <line x1="0" y1="330" x2="1080" y2="330"/>
-      <line x1="0" y1="660" x2="1080" y2="660"/>
-      <line x1="0" y1="990" x2="1080" y2="990"/>
-      <line x1="270" y1="0" x2="270" y2="1320"/>
-      <line x1="540" y1="0" x2="540" y2="1320"/>
-      <line x1="810" y1="0" x2="810" y2="1320"/>
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1220">
+    <rect width="1000" height="1220" fill="#0F172A"/>
+    <g stroke="#1E293B" stroke-width="2">
+      <line x1="0" y1="305" x2="1000" y2="305"/>
+      <line x1="0" y1="610" x2="1000" y2="610"/>
+      <line x1="0" y1="915" x2="1000" y2="915"/>
+      <line x1="250" y1="0" x2="250" y2="1220"/>
+      <line x1="500" y1="0" x2="500" y2="1220"/>
+      <line x1="750" y1="0" x2="750" y2="1220"/>
     </g>
-    <!-- Microscope lens -->
-    <circle cx="540" cy="630" r="430" fill="#F7F4EC" stroke="#4CAF50" stroke-width="18"/>
-    <circle cx="540" cy="630" r="405" fill="none" stroke="#2E6F40" stroke-width="6" stroke-dasharray="16 12"/>
-    <!-- Molecular bonds inside lens -->
-    <line x1="360" y1="530" x2="540" y2="630" stroke="#F59E0B" stroke-width="14" stroke-linecap="round"/>
-    <line x1="720" y1="530" x2="540" y2="630" stroke="#F59E0B" stroke-width="14" stroke-linecap="round"/>
-    <line x1="540" y1="630" x2="540" y2="810" stroke="#0284C7" stroke-width="14" stroke-dasharray="18 12" stroke-linecap="round"/>
-    <!-- Molecule nodes -->
-    <circle cx="360" cy="530" r="78" fill="#6D4C41" stroke="#FFFFFF" stroke-width="8"/>
-    <circle cx="720" cy="530" r="78" fill="#2E6F40" stroke="#FFFFFF" stroke-width="8"/>
-    <circle cx="540" cy="630" r="96" fill="#0284C7" stroke="#FFFFFF" stroke-width="10"/>
-    <circle cx="540" cy="830" r="64" fill="#F59E0B" stroke="#FFFFFF" stroke-width="8"/>
-    <!-- Small floating particles -->
-    <circle cx="290" cy="740" r="24" fill="#4CAF50" opacity="0.7"/>
-    <circle cx="790" cy="730" r="28" fill="#0284C7" opacity="0.7"/>
-    <circle cx="540" cy="360" r="22" fill="#6D4C41" opacity="0.7"/>
-    ${pill(320, 405, m1, "#5C4033", 300)}
-    ${pill(760, 405, m2, "#2E6F40", 300)}
-    ${pill(540, 965, m3, "#DC2626", 360)}
+    <circle cx="500" cy="590" r="405" fill="#F8FAFC" stroke="#4CAF50" stroke-width="18"/>
+    <circle class="spin-slow" cx="500" cy="590" r="380" fill="none" stroke="#2E6F40" stroke-width="6" stroke-dasharray="18 14" style="transform-origin: 500px 590px;"/>
+    <g class="float-slow">
+      <line x1="330" y1="500" x2="500" y2="590" stroke="#F59E0B" stroke-width="14" stroke-linecap="round"/>
+      <line x1="670" y1="500" x2="500" y2="590" stroke="#F59E0B" stroke-width="14" stroke-linecap="round"/>
+      <line x1="500" y1="590" x2="500" y2="770" stroke="#0284C7" stroke-width="14" stroke-dasharray="18 12" stroke-linecap="round"/>
+      <circle cx="330" cy="500" r="74" fill="#6D4C41" stroke="#FFFFFF" stroke-width="8"/>
+      <circle cx="670" cy="500" r="74" fill="#2E6F40" stroke="#FFFFFF" stroke-width="8"/>
+      <circle cx="500" cy="590" r="90" fill="#0284C7" stroke="#FFFFFF" stroke-width="10"/>
+      <circle cx="500" cy="785" r="60" fill="#F59E0B" stroke="#FFFFFF" stroke-width="8"/>
+    </g>
+    <g class="float-fast">
+      <circle cx="260" cy="690" r="22" fill="#4CAF50" opacity="0.75"/>
+      <circle cx="745" cy="680" r="24" fill="#0284C7" opacity="0.75"/>
+      <circle cx="500" cy="325" r="20" fill="#6D4C41" opacity="0.75"/>
+    </g>
+    ${pill(285, 375, mols[0] || "MOLEKUL A", "#5C4033", 290, "pop-1")}
+    ${pill(715, 375, mols[1] || "MOLEKUL B", "#2E6F40", 290, "pop-2")}
+    ${pill(500, 920, mols[2] || "IKATAN PELINDUNG", "#DC2626", 360, "pop-3")}
+  </svg>`;
+}
+
+function buildMechanismSvg(content) {
+  const mech = content.mechanism_steps || ["ZAT AWAL", "REAKSI ALAMI", "HASIL STABIL"];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1220">
+    <rect width="1000" height="1220" fill="#F7F4EC"/>
+    <!-- Left Card: Input -->
+    <g class="pop-1">
+      <rect x="80" y="180" width="380" height="310" rx="34" fill="#FFFFFF" stroke="#6D4C41" stroke-width="6"/>
+      <circle cx="270" cy="300" r="70" fill="#8D6E63"/>
+      <circle cx="235" cy="285" r="22" fill="#FDE68A"/>
+      <circle cx="305" cy="320" r="26" fill="#A1887F"/>
+      ${pill(270, 425, mech[0] || "BAHAN AWAL", "#6D4C41", 310)}
+    </g>
+    <!-- Plus / Arrow -->
+    <g class="float-fast">
+      <circle cx="500" cy="335" r="40" fill="#F59E0B"/>
+      <text x="500" y="352" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="900" fill="#FFFFFF" text-anchor="middle">+</text>
+    </g>
+    <!-- Right Card: Catalyst/Reaction -->
+    <g class="pop-2">
+      <rect x="540" y="180" width="380" height="310" rx="34" fill="#FFFFFF" stroke="#0284C7" stroke-width="6"/>
+      <circle cx="730" cy="300" r="70" fill="#0284C7"/>
+      <circle cx="710" cy="280" r="20" fill="#E0F2FE"/>
+      <circle cx="755" cy="320" r="24" fill="#38BDF8"/>
+      ${pill(730, 425, mech[1] || "PROSES REAKSI", "#0284C7", 310)}
+    </g>
+    <!-- Down Arrow -->
+    <path class="float-slow" d="M500 525 L500 625" stroke="#2E6F40" stroke-width="14" stroke-linecap="round"/>
+    <polygon points="500,655 474,615 526,615" fill="#2E6F40"/>
+    <!-- Result Card -->
+    <g class="pop-3">
+      <rect x="140" y="685" width="720" height="360" rx="40" fill="#2E6F40"/>
+      <circle cx="500" cy="825" r="82" fill="#FFFFFF"/>
+      <circle cx="475" cy="810" r="26" fill="#4CAF50"/>
+      <circle cx="525" cy="835" r="30" fill="#6D4C41"/>
+      ${pill(500, 965, mech[2] || "HASIL REAKSI", "#F59E0B", 460)}
+    </g>
   </svg>`;
 }
 
 function buildOutroSvg(content) {
   const steps = content.summary_points || ["PROSES ALAMI", "REAKSI STABIL", "MANFAAT NYATA"];
-  const s1 = steps[0] || "PROSES ALAMI";
-  const s2 = steps[1] || "REAKSI KIMIA";
-  const s3 = steps[2] || "HASIL NYATA";
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1320">
-    <rect width="1080" height="1320" fill="#F5F2EB"/>
-    <!-- 3-step vertical flow cards -->
-    <rect x="110" y="130" width="860" height="240" rx="34" fill="#FFFFFF" stroke="#6D4C41" stroke-width="6"/>
-    <circle cx="215" cy="250" r="52" fill="#6D4C41"/>
-    <text x="215" y="268" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="900" fill="#FFFFFF" text-anchor="middle">1</text>
-    <text x="305" y="264" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800" fill="#3B281E">${escapeXml(s1.slice(0, 32))}</text>
-
-    <path d="M540 385 L540 455" stroke="#2E6F40" stroke-width="10" stroke-linecap="round"/>
-    <polygon points="540,475 520,445 560,445" fill="#2E6F40"/>
-
-    <rect x="110" y="490" width="860" height="240" rx="34" fill="#FFFFFF" stroke="#2E6F40" stroke-width="6"/>
-    <circle cx="215" cy="610" r="52" fill="#2E6F40"/>
-    <text x="215" y="628" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="900" fill="#FFFFFF" text-anchor="middle">2</text>
-    <text x="305" y="624" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800" fill="#3B281E">${escapeXml(s2.slice(0, 32))}</text>
-
-    <path d="M540 745 L540 815" stroke="#2E6F40" stroke-width="10" stroke-linecap="round"/>
-    <polygon points="540,835 520,805 560,805" fill="#2E6F40"/>
-
-    <rect x="110" y="850" width="860" height="240" rx="34" fill="#2E6F40"/>
-    <circle cx="215" cy="970" r="52" fill="#FFFFFF"/>
-    <text x="215" y="988" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="900" fill="#2E6F40" text-anchor="middle">3</text>
-    <text x="305" y="984" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800" fill="#FFFFFF">${escapeXml(s3.slice(0, 32))}</text>
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1220">
+    <rect width="1000" height="1220" fill="#F5F2EB"/>
+    <g class="pop-1">
+      <rect x="90" y="110" width="820" height="225" rx="34" fill="#FFFFFF" stroke="#6D4C41" stroke-width="6"/>
+      <circle cx="195" cy="222" r="50" fill="#6D4C41"/>
+      <text x="195" y="239" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="900" fill="#FFFFFF" text-anchor="middle">1</text>
+      <text x="280" y="236" font-family="Inter, Arial, sans-serif" font-size="33" font-weight="800" fill="#3B281E">${escapeXml((steps[0] || "PROSES ALAMI").slice(0, 32))}</text>
+    </g>
+    <path d="M500 350 L500 415" stroke="#2E6F40" stroke-width="10" stroke-linecap="round"/>
+    <polygon points="500,435 480,405 520,405" fill="#2E6F40"/>
+    <g class="pop-2">
+      <rect x="90" y="450" width="820" height="225" rx="34" fill="#FFFFFF" stroke="#2E6F40" stroke-width="6"/>
+      <circle cx="195" cy="562" r="50" fill="#2E6F40"/>
+      <text x="195" y="579" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="900" fill="#FFFFFF" text-anchor="middle">2</text>
+      <text x="280" y="576" font-family="Inter, Arial, sans-serif" font-size="33" font-weight="800" fill="#3B281E">${escapeXml((steps[1] || "REAKSI KIMIA").slice(0, 32))}</text>
+    </g>
+    <path d="M500 690 L500 755" stroke="#2E6F40" stroke-width="10" stroke-linecap="round"/>
+    <polygon points="500,775 480,745 520,745" fill="#2E6F40"/>
+    <g class="pop-3">
+      <rect x="90" y="790" width="820" height="225" rx="34" fill="#2E6F40"/>
+      <circle cx="195" cy="902" r="50" fill="#FFFFFF"/>
+      <text x="195" y="919" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="900" fill="#2E6F40" text-anchor="middle">3</text>
+      <text x="280" y="916" font-family="Inter, Arial, sans-serif" font-size="33" font-weight="800" fill="#FFFFFF">${escapeXml((steps[2] || "HASIL NYATA").slice(0, 32))}</text>
+    </g>
   </svg>`;
 }
 
-function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, zoomType) {
-  const animCss =
+function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, stepNumber, zoomType) {
+  const camKeyframe =
     zoomType === "microscope"
-      ? "@keyframes camMove { 0% { transform: scale(1); } 100% { transform: scale(1.14); } }"
+      ? "@keyframes camMove { 0% { transform: scale(1); } 100% { transform: scale(1.12); } }"
       : zoomType === "outro"
         ? "@keyframes camMove { 0% { transform: scale(1.06); } 100% { transform: scale(1); } }"
-        : "@keyframes camMove { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }";
+        : "@keyframes camMove { 0% { transform: scale(1); } 100% { transform: scale(1.08); } }";
 
   return `<!DOCTYPE html>
 <html>
@@ -187,7 +239,7 @@ function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, zoomType) {
   body {
     width: 1080px;
     height: 1920px;
-    background: linear-gradient(180deg, #EAF4F8 0%, #F7F4EC 50%, #EFE9DC 100%);
+    background: linear-gradient(180deg, #E6F3F9 0%, #F7F4EC 52%, #EDE6D6 100%);
     font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
     overflow: hidden;
     display: flex;
@@ -196,33 +248,34 @@ function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, zoomType) {
   }
   .header {
     width: 960px;
-    margin-top: 88px;
+    margin-top: 82px;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 14px;
+    animation: slideDown 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
   .badge {
     background: #2E6F40;
     color: #FFFFFF;
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 800;
-    letter-spacing: 1.5px;
-    padding: 12px 30px;
+    letter-spacing: 1.4px;
+    padding: 11px 28px;
     border-radius: 999px;
     text-transform: uppercase;
   }
   .title {
     color: #3B281E;
-    font-size: 46px;
+    font-size: 44px;
     font-weight: 900;
     text-align: center;
-    line-height: 1.2;
+    line-height: 1.18;
   }
   .stage {
-    width: 1020px;
-    height: 1280px;
-    margin-top: 30px;
+    width: 1000px;
+    height: 1220px;
+    margin-top: 28px;
     border-radius: 40px;
     overflow: hidden;
     box-shadow: 0 24px 60px rgba(59, 40, 30, 0.14);
@@ -232,19 +285,31 @@ function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, zoomType) {
   .cam {
     width: 100%;
     height: 100%;
-    animation: camMove 7s ease-in-out forwards;
+    animation: camMove 11s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
   }
   .cam svg {
     width: 100%;
     height: 100%;
     display: block;
   }
-  ${animCss}
+  .float-slow { animation: floatSlow 4.5s ease-in-out infinite alternate; }
+  .float-fast { animation: floatSlow 2.6s ease-in-out infinite alternate; }
+  .pulse-box { animation: pulseBox 2s ease-in-out infinite; }
+  .spin-slow { animation: spinSlow 24s linear infinite; }
+  .pop-1 { opacity: 0; animation: popIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards; }
+  .pop-2 { opacity: 0; animation: popIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.6s forwards; }
+  .pop-3 { opacity: 0; animation: popIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) 1.0s forwards; }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes floatSlow { from { transform: translateY(-8px); } to { transform: translateY(8px); } }
+  @keyframes pulseBox { 0%, 100% { stroke-opacity: 1; } 50% { stroke-opacity: 0.45; } }
+  @keyframes spinSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes popIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+  ${camKeyframe}
 </style>
 </head>
 <body>
   <div class="header">
-    <div class="badge">${escapeXml(sceneBadge)}</div>
+    <div class="badge">${escapeXml(stepNumber)} • ${escapeXml(sceneBadge)}</div>
     <div class="title">${escapeXml(topicTitle)}</div>
   </div>
   <div class="stage">
@@ -257,79 +322,78 @@ function buildSceneHtml(svgMarkup, topicTitle, sceneBadge, zoomType) {
 function buildJson2VideoMovie(content) {
   const shortTitle = content.judul_pendek || content.topik;
 
+  const scenesSpec = [
+    {
+      comment: "Scene 1 - Hook & Macro Overview",
+      svg: buildHookSvg(content),
+      badge: "Kimia Sehari • Fakta Alam",
+      step: "1/5",
+      zoom: "macro",
+      text: content.scene_1_narasi || content.hook,
+      fade: false,
+    },
+    {
+      comment: "Scene 2 - Zoom Into Reaction Zone",
+      svg: buildZoomInTransitionSvg(content),
+      badge: "Mengamati Lebih Dekat",
+      step: "2/5",
+      zoom: "macro",
+      text: content.scene_2_narasi || content.penjelasan,
+      fade: true,
+    },
+    {
+      comment: "Scene 3 - Microscope & Molecular View",
+      svg: buildMicroscopeSvg(content),
+      badge: "Zoom Mikroskop & Molekul",
+      step: "3/5",
+      zoom: "microscope",
+      text: content.scene_3_narasi || content.penjelasan,
+      fade: true,
+    },
+    {
+      comment: "Scene 4 - Chemical Mechanism",
+      svg: buildMechanismSvg(content),
+      badge: "Mekanisme Reaksi Kimia",
+      step: "4/5",
+      zoom: "macro",
+      text: content.scene_4_narasi || content.kesimpulan,
+      fade: true,
+    },
+    {
+      comment: "Scene 5 - Everyday Takeaway",
+      svg: buildOutroSvg(content),
+      badge: "Ringkasan Kimia Sehari",
+      step: "5/5",
+      zoom: "outro",
+      text:
+        content.scene_5_narasi ||
+        content.kesimpulan ||
+        "Itulah keajaiban kimia sehari-hari di sekitar kita!",
+      fade: true,
+    },
+  ];
+
   return {
     resolution: "instagram-story",
     quality: "high",
-    scenes: [
-      {
-        comment: "Scene 1 - 2D Vector Macro Diagram",
-        elements: [
-          {
-            type: "html",
-            html: buildSceneHtml(
-              buildMacroSvg(content),
-              shortTitle,
-              "Kimia Sehari • Fakta Alam",
-              "macro"
-            ),
-            width: 1080,
-            height: 1920,
-          },
-          {
-            type: "voice",
-            model: "azure",
-            voice: "id-ID-ArdiNeural",
-            text: content.hook,
-          },
-        ],
-      },
-      {
-        comment: "Scene 2 - 2D Vector Microscope Zoom Diagram",
-        elements: [
-          {
-            type: "html",
-            html: buildSceneHtml(
-              buildMicroscopeSvg(content),
-              shortTitle,
-              "Zoom Mikroskop & Molekul",
-              "microscope"
-            ),
-            width: 1080,
-            height: 1920,
-          },
-          {
-            type: "voice",
-            model: "azure",
-            voice: "id-ID-ArdiNeural",
-            text: content.penjelasan,
-          },
-        ],
-      },
-      {
-        comment: "Scene 3 - 2D Vector Summary Diagram",
-        elements: [
-          {
-            type: "html",
-            html: buildSceneHtml(
-              buildOutroSvg(content),
-              shortTitle,
-              "Ringkasan Reaksi Kimia",
-              "outro"
-            ),
-            width: 1080,
-            height: 1920,
-          },
-          {
-            type: "voice",
-            model: "azure",
-            voice: "id-ID-ArdiNeural",
-            text:
-              content.kesimpulan ||
-              "Itulah rahasia kimia sehari-hari di sekitar kita!",
-          },
-        ],
-      },
-    ],
+    scenes: scenesSpec.map((s) => ({
+      comment: s.comment,
+      ...(s.fade ? { transition: { style: "fade", duration: 0.6 } } : {}),
+      elements: [
+        {
+          type: "html",
+          html: buildSceneHtml(s.svg, shortTitle, s.badge, s.step, s.zoom),
+          width: 1080,
+          height: 1920,
+        },
+        {
+          type: "voice",
+          model: "azure",
+          voice: "id-ID-ArdiNeural",
+          text: s.text,
+        },
+      ],
+    })),
     elements: [
       {
         type: "subtitles",
@@ -420,16 +484,20 @@ export default async function handler(req, res) {
     const prompt = `Tanggal edisi: ${dateStr}.
 Buatkan satu topik riset kimia sehari-hari di alam dengan fokus tema "${category}" dari sudut pandang "${angle}".${exclusionLine}
 Gunakan gaya bahasa "Kimia Sehari": ramah, santai, edukatif.
+Total durasi narasi suara harus sekitar 55-60 detik (sekitar 130-145 kata total, dibagi rata ke dalam 5 adegan berurutan).
 
 Format output dalam JSON murni dengan key:
 - "topik": Judul lengkap konten
 - "judul_pendek": Judul singkat maksimal 6 kata untuk header video
-- "hook": Kalimat pembuka narasi suara (3-4 detik pertama) yang memancing rasa penasaran
-- "penjelasan": Penjelasan singkat sains mikroskopis/molekulernya untuk narasi suara (maksimal 2-3 kalimat)
-- "kesimpulan": 1 kalimat penutup singkat untuk narasi suara akhir video
-- "macro_labels": Array berisi tepat 3 label singkat (maks 3 kata, huruf kapital) untuk diagram adegan 1 (contoh: ["BATU KARANG", "AIR LAUT", "TITIK EROSI"])
-- "micro_molecules": Array berisi tepat 3 label molekul/reaksi singkat (maks 3 kata, huruf kapital) untuk diagram mikroskop adegan 2 (contoh: ["KALSIUM KARBONAT", "MOLEKUL AIR", "IKATAN HIDROGEN"])
-- "summary_points": Array berisi tepat 3 poin alur singkat (maks 4 kata) untuk diagram kesimpulan adegan 3
+- "scene_1_narasi": Narasi suara Adegan 1 (24-28 kata) — hook penasaran tentang fenomena nyata yang sering kita lihat
+- "scene_2_narasi": Narasi suara Adegan 2 (24-28 kata) — mengajak penonton melihat lebih dekat ke bagian yang bereaksi
+- "scene_3_narasi": Narasi suara Adegan 3 (26-30 kata) — penjelasan sains di level mikroskop/molekul/enzim secara jelas
+- "scene_4_narasi": Narasi suara Adegan 4 (26-30 kata) — menjelaskan mekanisme reaksi kimia (bahan A bertemu bahan B menghasilkan C)
+- "scene_5_narasi": Narasi suara Adegan 5 (24-28 kata) — kesimpulan manfaatnya di kehidupan sehari-hari dan ajakan ringan
+- "macro_labels": Array 3 label singkat (maks 3 kata, huruf kapital) untuk diagram Adegan 1-2
+- "micro_molecules": Array 3 label molekul/ikatan singkat (maks 3 kata, huruf kapital) untuk diagram mikroskop Adegan 3
+- "mechanism_steps": Array 3 label singkat (maks 3 kata, huruf kapital) untuk diagram mekanisme Adegan 4 (Input 1, Input 2, Hasil)
+- "summary_points": Array 3 poin singkat (maks 4 kata) untuk diagram ringkasan Adegan 5
 - "caption": Caption Instagram & TikTok lengkap dengan hashtag sains`;
 
     const modelCandidates = process.env.GEMINI_MODEL
@@ -499,11 +567,12 @@ Format output dalam JSON murni dengan key:
     const enrichedPayload = {
       topik: content.topik,
       judul_pendek: content.judul_pendek,
-      hook: content.hook,
-      penjelasan: content.penjelasan,
-      kesimpulan: content.kesimpulan,
+      hook: content.scene_1_narasi,
+      penjelasan: content.scene_3_narasi,
+      kesimpulan: content.scene_5_narasi,
       macro_labels: content.macro_labels,
       micro_molecules: content.micro_molecules,
+      mechanism_steps: content.mechanism_steps,
       summary_points: content.summary_points,
       caption: content.caption,
       json2video_movie: json2videoMovie,
@@ -548,9 +617,11 @@ Format output dalam JSON murni dengan key:
         `🌿 KIMIA SEHARI (${dateStr}) 🌿`,
         "",
         `📌 Topik: ${content.topik || "-"}`,
-        `🎯 Hook (Scene 1): ${content.hook || "-"}`,
-        `🔬 Mikroskop (Scene 2): ${content.penjelasan || "-"}`,
-        `✨ Penutup (Scene 3): ${content.kesimpulan || "-"}`,
+        `1️⃣ Hook: ${content.scene_1_narasi || "-"}`,
+        `2️⃣ Zoom: ${content.scene_2_narasi || "-"}`,
+        `3️⃣ Mikroskop: ${content.scene_3_narasi || "-"}`,
+        `4️⃣ Reaksi: ${content.scene_4_narasi || "-"}`,
+        `5️⃣ Penutup: ${content.scene_5_narasi || "-"}`,
         "",
         "📝 Caption:",
         content.caption || "-",
