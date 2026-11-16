@@ -117,7 +117,7 @@ async function callGemini(apiKey, model, promptText) {
           temperature: 0.75,
         },
       }),
-      signal: AbortSignal.timeout(90000),
+      signal: AbortSignal.timeout(180000),
     }
   );
   if (!res.ok) {
@@ -150,7 +150,21 @@ async function generateWithAI(env, messages) {
   }
 
   const combinedPrompt = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n");
-  return callGemini(GEMINI_API_KEY, GEMINI_MODEL, combinedPrompt);
+  const candidates = env.GEMINI_MODEL
+    ? [env.GEMINI_MODEL, "gemini-3.8-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]
+    : ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
+
+  let lastErr;
+  for (const model of [...new Set(candidates)]) {
+    try {
+      return await callGemini(GEMINI_API_KEY, model, combinedPrompt);
+    } catch (err) {
+      lastErr = err;
+      if (err.name !== "TimeoutError" && !/\((404|429|503)\)/.test(err.message)) throw err;
+      console.warn(`[AI] ${model} sibuk/tidak tersedia, mencoba model berikutnya...`);
+    }
+  }
+  throw lastErr;
 }
 
 function extractJson(raw) {
