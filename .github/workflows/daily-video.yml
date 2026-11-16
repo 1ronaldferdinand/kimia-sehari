@@ -1,0 +1,75 @@
+name: Daily Kimia Sehari Video
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # 13:00 WIB setiap hari
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate motion graphic & render Remotion video
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+        run: node scripts/generate-video.mjs
+
+      - name: Upload video to GitHub Release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="daily-${{ github.run_number }}"
+          gh release create "$TAG" out/video.mp4 \
+            --title "Kimia Sehari ($TAG)" \
+            --notes "Automated daily motion graphic render"
+          echo "video_url=https://github.com/${{ github.repository }}/releases/download/$TAG/video.mp4" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger Make.com Webhook (Telegram + IG Reels)
+        if: secrets.MAKE_WEBHOOK_URL != ''
+        env:
+          MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
+          VIDEO_URL: ${{ steps.release.outputs.video_url }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const meta = JSON.parse(fs.readFileSync("out/metadata.json", "utf8"));
+            fetch(process.env.MAKE_WEBHOOK_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                brand: "Kimia Sehari",
+                date: meta.date,
+                palette: ["Cokelat", "Hijau", "Putih"],
+                payload: {
+                  topik: meta.topik,
+                  judul_pendek: meta.judul_pendek,
+                  caption: meta.caption,
+                  video_url: process.env.VIDEO_URL
+                }
+              })
+            }).then(async r => {
+              if (!r.ok) throw new Error("Webhook gagal: " + r.status + " " + await r.text());
+              console.log("Webhook terkirim:", r.status);
+            });
+          '

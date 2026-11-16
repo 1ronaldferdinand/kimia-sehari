@@ -4,8 +4,21 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --check api/cron.js",
+    "test": "node --check api/cron.js && node --check scripts/generate-video.mjs && ./node_modules/.bin/tsc --noEmit",
+    "generate": "node --env-file-if-exists=.env scripts/generate-video.mjs",
+    "typecheck": "./node_modules/.bin/tsc --noEmit",
+    "remotion:preview": "./node_modules/.bin/remotion studio remotion/index.ts",
     "local": "node --env-file-if-exists=.env scripts/run-local.js"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@remotion/cli": "^4.0.543",
+    "music-metadata": "^12.5.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "remotion": "^4.0.543"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "^7.0.2"
+  }
 }

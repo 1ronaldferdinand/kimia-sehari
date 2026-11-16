@@ -1,5 +1,5 @@
 {
-  "name": "Kimia Sehari - Automated Video Pipeline",
+  "name": "Kimia Sehari - Remotion + Telegram Pipeline",
   "flow": [
     {
       "id": 1,
@@ -23,99 +23,6 @@
         "useNewZLibDeCompress": true
       },
       "mapper": {
-        "url": "https://api.creatomate.com/v2/renders",
-        "serializeUrl": false,
-        "method": "post",
-        "headers": [
-          {
-            "name": "Authorization",
-            "value": "Bearer ISI_DENGAN_API_KEY_CREATOMATE_KAMU"
-          },
-          {
-            "name": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "qs": [],
-        "bodyType": "raw",
-        "parseResponse": true,
-        "contentType": "application/json",
-        "data": "{{1.payload.creatomate_json_string}}",
-        "gzip": true,
-        "useMtls": false,
-        "shareCookies": false,
-        "followRedirect": true,
-        "useQuerystring": false,
-        "followAllRedirects": false,
-        "rejectUnauthorized": true
-      },
-      "metadata": {
-        "designer": {
-          "x": 300,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 3,
-      "module": "util:FunctionSleep",
-      "version": 1,
-      "parameters": {},
-      "mapper": {
-        "duration": "45"
-      },
-      "metadata": {
-        "designer": {
-          "x": 600,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 4,
-      "module": "http:ActionSendData",
-      "version": 3,
-      "parameters": {
-        "handleErrors": false,
-        "useNewZLibDeCompress": true
-      },
-      "mapper": {
-        "url": "https://api.creatomate.com/v2/renders/{{2.data.id}}",
-        "serializeUrl": false,
-        "method": "get",
-        "headers": [
-          {
-            "name": "Authorization",
-            "value": "Bearer ISI_DENGAN_API_KEY_CREATOMATE_KAMU"
-          }
-        ],
-        "qs": [],
-        "bodyType": "raw",
-        "parseResponse": true,
-        "gzip": true,
-        "useMtls": false,
-        "shareCookies": false,
-        "followRedirect": true,
-        "useQuerystring": false,
-        "followAllRedirects": false,
-        "rejectUnauthorized": true
-      },
-      "metadata": {
-        "designer": {
-          "x": 900,
-          "y": 0
-        }
-      }
-    },
-    {
-      "id": 5,
-      "module": "http:ActionSendData",
-      "version": 3,
-      "parameters": {
-        "handleErrors": false,
-        "useNewZLibDeCompress": true
-      },
-      "mapper": {
         "url": "https://api.telegram.org/bot9112870182:AAGj0dsuplVVYkzcZTU_xj9C51hgqNLaatk/sendVideo",
         "serializeUrl": false,
         "method": "post",
@@ -129,11 +36,18 @@
         "bodyType": "raw",
         "parseResponse": true,
         "contentType": "application/json",
-        "data": "{\"chat_id\": \"759197417\", \"video\": \"{{4.data.url}}\", \"caption\": {{toString(1.payload.caption)}}}"
+        "data": "{\"chat_id\": \"759197417\", \"video\": \"{{1.payload.video_url}}\", \"caption\": {{toString(1.payload.caption)}}}",
+        "gzip": true,
+        "useMtls": false,
+        "shareCookies": false,
+        "followRedirect": true,
+        "useQuerystring": false,
+        "followAllRedirects": false,
+        "rejectUnauthorized": true
       },
       "metadata": {
         "designer": {
-          "x": 1200,
+          "x": 300,
           "y": 0
         }
       }

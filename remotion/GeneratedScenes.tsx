@@ -1,0 +1,1 @@
+export { GeneratedScene } from "./FallbackScenes";
