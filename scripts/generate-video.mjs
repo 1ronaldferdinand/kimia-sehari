@@ -152,13 +152,12 @@ async function generateWithAI(env, messages) {
 
   const combinedPrompt = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n");
   const candidates = env.GEMINI_MODEL
-    ? [env.GEMINI_MODEL, "gemini-3.8-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]
-    : ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
+    ? [env.GEMINI_MODEL, "gemini-4-hydrogen", "gemini-3.8-flash"]
+    : ["gemini-4-hydrogen", "gemini-3.8-flash"];
 
   let lastErr;
   for (const model of [...new Set(candidates)]) {
-    const maxAttempts = model.includes("lite") ? 1 : 2;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         return await callGemini(GEMINI_API_KEY, model, combinedPrompt);
       } catch (err) {
@@ -166,7 +165,7 @@ async function generateWithAI(env, messages) {
         if (err.name !== "TimeoutError" && !/\((404|429|503)\)/.test(err.message)) {
           throw err;
         }
-        if (attempt < maxAttempts && /\((429|503)\)/.test(err.message)) {
+        if (attempt < 2 && /\((429|503)\)/.test(err.message)) {
           console.warn(`[AI] ${model} sibuk (percobaan ${attempt}), menunggu 5 detik...`);
           await new Promise((r) => setTimeout(r, 5000));
           continue;

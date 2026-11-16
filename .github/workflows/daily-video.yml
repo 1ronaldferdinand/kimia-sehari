@@ -3,10 +3,12 @@ name: Daily Kimia Sehari Video
 on:
   schedule:
     - cron: "0 6 * * *" # 13:00 WIB setiap hari
+    - cron: "0 7 * * *" # 14:00 WIB auto-retry 1 jam kemudian jika 13:00 gagal
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   render-and-publish:
@@ -14,19 +16,38 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - name: Skip scheduled retry if already published today
+        id: guard
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          COUNT=$(gh run list --repo "${{ github.repository }}" --workflow=daily-video.yml --status=success --limit=10 --json createdAt --jq "[.[] | select(.createdAt | startswith(\"$TODAY\"))] | length")
+          if [ "$COUNT" -gt 0 ]; then
+            echo "Video hari ini ($TODAY) sudah sukses terbit, lewati jadwal retry."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout repository
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/checkout@v4
 
       - name: Setup Node.js
+        if: steps.guard.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
+        if: steps.guard.outputs.skip != 'true'
         run: npm install
 
       - name: Generate motion graphic & render Remotion video
+        if: steps.guard.outputs.skip != 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -36,6 +57,7 @@ jobs:
         run: node scripts/generate-video.mjs
 
       - name: Upload video for public HTTPS URL (works for Private repos)
+        if: steps.guard.outputs.skip != 'true'
         id: release
         run: |
           VIDEO_URL=$(node -e '
@@ -67,6 +89,7 @@ jobs:
           echo "video_url=$VIDEO_URL" >> "$GITHUB_OUTPUT"
 
       - name: Trigger Make.com Webhook (Telegram + IG Reels)
+        if: steps.guard.outputs.skip != 'true'
         env:
           MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
           VIDEO_URL: ${{ steps.release.outputs.video_url }}
