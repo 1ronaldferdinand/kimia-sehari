@@ -35,10 +35,14 @@ const DAILY_ANGLES = [
 function getDailyFocus(date = new Date()) {
   const startOfYear = new Date(Date.UTC(date.getUTCFullYear(), 0, 0));
   const dayOfYear = Math.floor((date - startOfYear) / 86_400_000);
-  const category = DAILY_CATEGORIES[dayOfYear % DAILY_CATEGORIES.length];
+  const slotOffset = date.getUTCHours() >= 7 ? 1 : 0;
+  const category =
+    DAILY_CATEGORIES[(dayOfYear * 2 + slotOffset) % DAILY_CATEGORIES.length];
   const angle =
     DAILY_ANGLES[
-      Math.floor(dayOfYear / DAILY_CATEGORIES.length + date.getUTCDate()) %
+      (Math.floor(dayOfYear / DAILY_CATEGORIES.length) +
+        date.getUTCDate() +
+        slotOffset * 3) %
         DAILY_ANGLES.length
     ];
   return { dateStr: date.toISOString().slice(0, 10), category, angle };

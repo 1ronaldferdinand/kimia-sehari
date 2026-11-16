@@ -2,8 +2,10 @@ name: Daily Kimia Sehari Video
 
 on:
   schedule:
-    - cron: "0 6 * * *" # 13:00 WIB setiap hari
-    - cron: "0 7 * * *" # 14:00 WIB auto-retry 1 jam kemudian jika 13:00 gagal
+    - cron: "0 1 * * *" # 08:00 WIB (Pagi)
+    - cron: "0 2 * * *" # 09:00 WIB (Auto-retry Pagi jika 08:00 gagal)
+    - cron: "0 8 * * *" # 15:00 WIB (Sore)
+    - cron: "0 9 * * *" # 16:00 WIB (Auto-retry Sore jika 15:00 gagal)
   workflow_dispatch:
 
 permissions:
@@ -16,16 +18,21 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Skip scheduled retry if already published today
+      - name: Skip scheduled retry if slot already published today
         id: guard
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' && (github.event.schedule == '0 2 * * *' || github.event.schedule == '0 9 * * *')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TODAY=$(date -u +%Y-%m-%d)
-          COUNT=$(gh run list --repo "${{ github.repository }}" --workflow=daily-video.yml --status=success --limit=10 --json createdAt --jq "[.[] | select(.createdAt | startswith(\"$TODAY\"))] | length")
+          if [ "${{ github.event.schedule }}" = "0 2 * * *" ]; then
+            FILTER='.createdAt | startswith("'"$TODAY"'T01:") or startswith("'"$TODAY"'T02:")'
+          else
+            FILTER='.createdAt | startswith("'"$TODAY"'T08:") or startswith("'"$TODAY"'T09:")'
+          fi
+          COUNT=$(gh run list --repo "${{ github.repository }}" --workflow=daily-video.yml --status=success --limit=15 --json createdAt --jq "[.[] | select($FILTER)] | length")
           if [ "$COUNT" -gt 0 ]; then
-            echo "Video hari ini ($TODAY) sudah sukses terbit, lewati jadwal retry."
+            echo "Slot hari ini sudah sukses terbit, lewati jadwal retry."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
