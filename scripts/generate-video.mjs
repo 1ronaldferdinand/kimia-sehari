@@ -254,9 +254,13 @@ Kamu juga harus menulis kode React + Remotion TSX yang lengkap di key "tsx_code"
 Aturan ketat untuk "tsx_code" (akan disimpan ke remotion/GeneratedScenes.tsx):
 1. Import HANYA dari "react", "remotion" (AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate, Easing), dan "./types" (import type { SceneRendererProps } from "./types"). JANGAN import library lain.
 2. Export bernama persis: \`export const GeneratedScene: React.FC<SceneRendererProps> = ({ sceneIndex, totalScenes, scene, judulPendek }) => { ... }\`
-3. Canvas berukuran 1080x1920 (30fps). Sisakan ruang atas (~80px) untuk progress bar dan ruang bawah (~300px) untuk subtitle agar tidak bertabrakan.
-4. Buat animasi motion graphic SVG/HTML yang KAYA dan SPESIFIK sesuai topik hari ini untuk tiap \`sceneIndex\` (0 = Hook fenomena nyata, 1 = Zoom ke zona reaksi, 2 = Level mikroskop/molekul beranimasi, 3 = Diagram mekanisme reaksi A + B -> C, 4 = Ringkasan manfaat nyata). Gunakan \`spring()\`, \`interpolate()\`, rotasi, partikel bergerak, garis panah animasi, dan tampilkan \`scene.callouts\` sebagai pill beranimasi.
-5. Pastikan TypeScript strict mode valid (semua tipe jelas, tidak ada unused variable yang menyebabkan error, tidak ada \`any\` implisit).
+3. WAJIB pakai tata letak 3 zona anti-tumpang-tindih (canvas 1080x1920, 30fps):
+   - Zona Header: \`position: "absolute", top: 96, left: 56, right: 56, display: "flex", justifyContent: "space-between", alignItems: "center"\` (kiri: pill \`scene.badge\`, kanan: \`judulPendek\` maxWidth 460).
+   - Zona Konten Utama: \`position: "absolute", top: 200, bottom: 340, left: 56, right: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28\` — ruang \`bottom: 340\` HARUS kosong untuk subtitle.
+   - Di dalam Zona Konten Utama: taruh ilustrasi SVG animasi (ukuran maksimal \`width: 860, height: 680\` dengan \`viewBox\` yang pas dan TANPA teks panjang di dalam SVG agar tidak bertabrakan), lalu di BAWAH SVG taruh \`scene.callouts\` dalam flex row (\`display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center"\`).
+   - DILARANG menaruh teks \`position: "absolute"\` sembarangan di atas elemen lain!
+4. Animasi HARUS halus dan sinematik: gunakan \`spring({ frame, fps, config: { damping: 16, stiffness: 100 } })\` untuk animasi masuk, \`interpolate\` dengan \`extrapolateLeft: "clamp", extrapolateRight: "clamp"\`, serta \`Math.sin(frame * 0.05)\` untuk gerakan mengambang/berdenyut yang lembut.
+5. Pastikan TypeScript strict mode valid (semua tipe jelas, tidak ada unused variable, tidak ada \`any\` implisit).
 
 Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
 {

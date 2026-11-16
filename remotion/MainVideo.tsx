@@ -125,6 +125,13 @@ const SceneWrapper: React.FC<{
   judulPendek: string;
 }> = ({ scene, sceneIndex, totalScenes, judulPendek }) => {
   const frame = useCurrentFrame();
+  const fadeIn =
+    sceneIndex > 0
+      ? interpolate(frame, [0, 10], [0, 1], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })
+      : 1;
   const fadeOut =
     sceneIndex < totalScenes - 1
       ? interpolate(
@@ -136,7 +143,7 @@ const SceneWrapper: React.FC<{
       : 1;
 
   return (
-    <AbsoluteFill style={{ opacity: fadeOut }}>
+    <AbsoluteFill style={{ opacity: Math.min(fadeIn, fadeOut) }}>
       <GeneratedScene
         sceneIndex={sceneIndex}
         totalScenes={totalScenes}
