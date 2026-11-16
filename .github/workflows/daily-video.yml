@@ -35,16 +35,12 @@ jobs:
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
         run: node scripts/generate-video.mjs
 
-      - name: Upload video to GitHub Release
+      - name: Upload video for public HTTPS URL (works for Private repos)
         id: release
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="daily-${{ github.run_number }}"
-          gh release create "$TAG" out/video.mp4 \
-            --title "Kimia Sehari ($TAG)" \
-            --notes "Automated daily motion graphic render"
-          echo "video_url=https://github.com/${{ github.repository }}/releases/download/$TAG/video.mp4" >> "$GITHUB_OUTPUT"
+          VIDEO_URL=$(curl -sS --fail -F "reqtype=fileupload" -F "fileToUpload=@out/video.mp4" https://catbox.moe/user/api.php)
+          echo "Uploaded URL: $VIDEO_URL"
+          echo "video_url=$VIDEO_URL" >> "$GITHUB_OUTPUT"
 
       - name: Trigger Make.com Webhook (Telegram + IG Reels)
         if: secrets.MAKE_WEBHOOK_URL != ''
