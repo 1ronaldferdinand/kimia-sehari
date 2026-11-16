@@ -43,12 +43,15 @@ jobs:
           echo "video_url=$VIDEO_URL" >> "$GITHUB_OUTPUT"
 
       - name: Trigger Make.com Webhook (Telegram + IG Reels)
-        if: secrets.MAKE_WEBHOOK_URL != ''
         env:
           MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
           VIDEO_URL: ${{ steps.release.outputs.video_url }}
         run: |
           node -e '
+            if (!process.env.MAKE_WEBHOOK_URL) {
+              console.log("MAKE_WEBHOOK_URL tidak disetel, lewati webhook.");
+              process.exit(0);
+            }
             const fs = require("fs");
             const meta = JSON.parse(fs.readFileSync("out/metadata.json", "utf8"));
             fetch(process.env.MAKE_WEBHOOK_URL, {

@@ -4,11 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --check api/cron.js && node --check scripts/generate-video.mjs && ./node_modules/.bin/tsc --noEmit",
+    "test": "node --check scripts/generate-video.mjs && ./node_modules/.bin/tsc --noEmit",
     "generate": "node --env-file-if-exists=.env scripts/generate-video.mjs",
     "typecheck": "./node_modules/.bin/tsc --noEmit",
-    "remotion:preview": "./node_modules/.bin/remotion studio remotion/index.ts",
-    "local": "node --env-file-if-exists=.env scripts/run-local.js"
+    "remotion:preview": "./node_modules/.bin/remotion studio remotion/index.ts"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.543",
