@@ -104,6 +104,55 @@ async function callClaude(apiKey, model, messages) {
   return data.content?.[0]?.text || "";
 }
 
+async function callGemini(apiKey, model, promptText) {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.75,
+        },
+      }),
+      signal: AbortSignal.timeout(90000),
+    }
+  );
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Gemini API gagal (${res.status}): ${errText}`);
+  }
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
+
+async function generateWithAI(env, messages) {
+  const {
+    ANTHROPIC_API_KEY,
+    ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929",
+    GEMINI_API_KEY,
+    GEMINI_MODEL = "gemini-flash-latest",
+  } = env;
+
+  if (ANTHROPIC_API_KEY) {
+    try {
+      return await callClaude(ANTHROPIC_API_KEY, ANTHROPIC_MODEL, messages);
+    } catch (err) {
+      if (!GEMINI_API_KEY) throw err;
+      console.warn(`[AI] Claude gagal (${err.message.slice(0, 120)}), fallback ke Gemini (${GEMINI_MODEL})...`);
+    }
+  }
+
+  if (!GEMINI_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY atau GEMINI_API_KEY belum disetel.");
+  }
+
+  const combinedPrompt = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n");
+  return callGemini(GEMINI_API_KEY, GEMINI_MODEL, combinedPrompt);
+}
+
 function extractJson(raw) {
   const cleaned = raw
     .replace(/^```(?:json)?\s*/i, "")
@@ -164,8 +213,8 @@ async function main() {
     UPSTASH_REDIS_REST_TOKEN,
   } = process.env;
 
-  if (!ANTHROPIC_API_KEY) {
-    throw new Error("ANTHROPIC_API_KEY belum disetel.");
+  if (!ANTHROPIC_API_KEY && !process.env.GEMINI_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY atau GEMINI_API_KEY belum disetel.");
   }
   if (!ELEVENLABS_API_KEY) {
     throw new Error("ELEVENLABS_API_KEY belum disetel.");
@@ -210,8 +259,8 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
   "tsx_code": "...kode TypeScript lengkap..."
 }`;
 
-  console.log(`[1/4] Meminta naskah & kode motion graphic ke Claude (${ANTHROPIC_MODEL})...`);
-  const raw = await callClaude(ANTHROPIC_API_KEY, ANTHROPIC_MODEL, [
+  console.log(`[1/4] Meminta naskah & kode motion graphic ke AI (${ANTHROPIC_API_KEY ? ANTHROPIC_MODEL : "Gemini"})...`);
+  const raw = await generateWithAI(process.env, [
     { role: "user", content: prompt },
   ]);
   const generated = extractJson(raw);
@@ -223,8 +272,8 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
   let tc = runTypecheck();
 
   if (!tc.ok) {
-    console.warn("[Typecheck] Gagal pada percobaan pertama, meminta Claude memperbaiki error TS...");
-    const fixRaw = await callClaude(ANTHROPIC_API_KEY, ANTHROPIC_MODEL, [
+    console.warn("[Typecheck] Gagal pada percobaan pertama, meminta AI memperbaiki error TS...");
+    const fixRaw = await generateWithAI(process.env, [
       { role: "user", content: prompt },
       { role: "assistant", content: raw },
       {
