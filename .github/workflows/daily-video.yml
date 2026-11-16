@@ -38,7 +38,31 @@ jobs:
       - name: Upload video for public HTTPS URL (works for Private repos)
         id: release
         run: |
-          VIDEO_URL=$(curl -sS --fail -F "reqtype=fileupload" -F "fileToUpload=@out/video.mp4" https://catbox.moe/user/api.php)
+          VIDEO_URL=$(node -e '
+            const fs = require("fs");
+            const data = new FormData();
+            data.append("file", new Blob([fs.readFileSync("out/video.mp4")], { type: "video/mp4" }), "video.mp4");
+            fetch("https://tmpfiles.org/api/v1/upload", { method: "POST", body: data })
+              .then(r => r.json())
+              .then(j => {
+                if (j?.data?.url) {
+                  console.log(j.data.url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/"));
+                  process.exit(0);
+                }
+                throw new Error("tmpfiles failed: " + JSON.stringify(j));
+              })
+              .catch(async () => {
+                const d2 = new FormData();
+                d2.append("files[]", new Blob([fs.readFileSync("out/video.mp4")], { type: "video/mp4" }), "video.mp4");
+                const r2 = await fetch("https://uguu.se/upload", { method: "POST", body: d2 });
+                const j2 = await r2.json();
+                if (j2?.files?.[0]?.url) {
+                  console.log(j2.files[0].url);
+                  process.exit(0);
+                }
+                throw new Error("All uploaders failed");
+              });
+          ')
           echo "Uploaded URL: $VIDEO_URL"
           echo "video_url=$VIDEO_URL" >> "$GITHUB_OUTPUT"
 
