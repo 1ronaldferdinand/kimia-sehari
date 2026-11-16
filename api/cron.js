@@ -116,10 +116,24 @@ function buildCreatomateRenderScript(content, baseUrl) {
   ];
 
   const zoomScale = {
-    microscope: { start_scale: "100%", end_scale: "112%" },
-    outro: { start_scale: "106%", end_scale: "100%" },
-    macro: { start_scale: "100%", end_scale: "108%" },
+    microscope: { start_scale: "100%", end_scale: "115%" },
+    outro: { start_scale: "108%", end_scale: "100%" },
+    macro: { start_scale: "100%", end_scale: "110%" },
   };
+
+  const sceneCallouts = [
+    content.macro_labels || ["OBJEK ALAM", "TITIK REAKSI"],
+    content.macro_labels || ["PERMUKAAN", "INTERAKSI"],
+    content.micro_molecules || ["MOLEKUL A", "IKATAN KIMIA"],
+    content.mechanism_steps || ["ZAT AWAL", "HASIL REAKSI"],
+    content.summary_points || ["PROSES ALAMI", "MANFAAT NYATA"],
+  ];
+
+  const moleculeParticles = [
+    { x: "14%", y: "31%", size: "34 px", color: "#2E6F40", delay: 0.25 },
+    { x: "86%", y: "36%", size: "26 px", color: "#0284C7", delay: 0.45 },
+    { x: "84%", y: "72%", size: "30 px", color: "#F59E0B", delay: 0.65 },
+  ];
 
   return {
     output_format: "mp4",
@@ -128,6 +142,8 @@ function buildCreatomateRenderScript(content, baseUrl) {
     elements: scenesSpec.map((s, idx) => {
       const voiceName = `voice_scene_${idx + 1}`;
       const scale = zoomScale[s.zoom] || zoomScale.macro;
+      const callouts = sceneCallouts[idx] || [];
+      const progressPct = `${((idx + 1) / scenesSpec.length) * 88}%`;
 
       return {
         type: "composition",
@@ -139,18 +155,49 @@ function buildCreatomateRenderScript(content, baseUrl) {
               animations: [
                 {
                   time: 0,
-                  duration: 0.6,
+                  duration: 0.65,
+                  easing: "quadratic-out",
                   transition: true,
-                  type: "fade",
+                  type: "slide",
+                  direction: "180°",
+                  fade: true,
                 },
               ],
             }
           : {}),
         elements: [
           {
+            type: "shape",
+            x: "50%",
+            y: "2.8%",
+            width: "88%",
+            height: "10 px",
+            border_radius: "5 px",
+            fill_color: "#E2DDD0",
+          },
+          {
+            type: "shape",
+            x: "6%",
+            x_anchor: "0%",
+            y: "2.8%",
+            width: progressPct,
+            height: "10 px",
+            border_radius: "5 px",
+            fill_color: "#2E6F40",
+            animations: [
+              {
+                time: 0,
+                duration: 0.7,
+                easing: "quadratic-out",
+                type: "wipe",
+                direction: "right",
+              },
+            ],
+          },
+          {
             type: "text",
             text: `${s.step} • ${s.badge}`,
-            y: "6.5%",
+            y: "6.8%",
             width: null,
             height: null,
             x_alignment: "50%",
@@ -164,11 +211,21 @@ function buildCreatomateRenderScript(content, baseUrl) {
             font_size: "2.3 vmin",
             fill_color: "#FFFFFF",
             text_transform: "uppercase",
+            animations: [
+              {
+                time: 0.05,
+                duration: 0.45,
+                easing: "quadratic-out",
+                type: "slide",
+                direction: "270°",
+                fade: true,
+              },
+            ],
           },
           {
             type: "text",
             text: shortTitle,
-            y: "13.5%",
+            y: "13.8%",
             width: "88%",
             height: null,
             x_alignment: "50%",
@@ -178,6 +235,17 @@ function buildCreatomateRenderScript(content, baseUrl) {
             font_size: "4.1 vmin",
             line_height: "118%",
             fill_color: "#3B281E",
+            animations: [
+              {
+                time: 0.15,
+                duration: 0.6,
+                easing: "quadratic-out",
+                type: "text-slide",
+                split: "line",
+                distance: "120%",
+                direction: "up",
+              },
+            ],
           },
           {
             type: "image",
@@ -186,13 +254,20 @@ function buildCreatomateRenderScript(content, baseUrl) {
             width: "92%",
             height: "62%",
             fit: "contain",
+            clip: true,
             fill_color: "#FFFFFF",
             border_radius: "40 px",
             stroke_color: "#FFFFFF",
             stroke_width: "6 px",
             animations: [
               {
-                easing: "ease-in-out",
+                time: 0,
+                duration: 0.5,
+                easing: "quadratic-out",
+                type: "fade",
+              },
+              {
+                easing: "linear",
                 type: "scale",
                 scope: "element",
                 start_scale: scale.start_scale,
@@ -200,6 +275,92 @@ function buildCreatomateRenderScript(content, baseUrl) {
               },
             ],
           },
+          ...moleculeParticles.map((p) => ({
+            type: "shape",
+            x: p.x,
+            y: p.y,
+            width: p.size,
+            height: p.size,
+            border_radius: "50%",
+            fill_color: p.color,
+            opacity: "75%",
+            animations: [
+              {
+                time: p.delay,
+                duration: 0.4,
+                easing: "quadratic-out",
+                type: "fade",
+              },
+              {
+                type: "wiggle",
+                scope: "element",
+              },
+            ],
+          })),
+          ...(callouts[0]
+            ? [
+                {
+                  type: "text",
+                  text: String(callouts[0]).toUpperCase().slice(0, 26),
+                  x: "27%",
+                  y: "76.5%",
+                  width: null,
+                  height: null,
+                  x_alignment: "50%",
+                  y_alignment: "50%",
+                  x_padding: "22 px",
+                  y_padding: "10 px",
+                  background_color: "#0284C7",
+                  background_border_radius: "50%",
+                  font_family: "Inter",
+                  font_weight: "800",
+                  font_size: "2.0 vmin",
+                  fill_color: "#FFFFFF",
+                  animations: [
+                    {
+                      time: 0.45,
+                      duration: 0.45,
+                      easing: "quadratic-out",
+                      type: "slide",
+                      direction: "0°",
+                      fade: true,
+                    },
+                  ],
+                },
+              ]
+            : []),
+          ...(callouts[1]
+            ? [
+                {
+                  type: "text",
+                  text: String(callouts[1]).toUpperCase().slice(0, 26),
+                  x: "73%",
+                  y: "76.5%",
+                  width: null,
+                  height: null,
+                  x_alignment: "50%",
+                  y_alignment: "50%",
+                  x_padding: "22 px",
+                  y_padding: "10 px",
+                  background_color: "#2E6F40",
+                  background_border_radius: "50%",
+                  font_family: "Inter",
+                  font_weight: "800",
+                  font_size: "2.0 vmin",
+                  fill_color: "#FFFFFF",
+                  animations: [
+                    {
+                      time: 0.9,
+                      duration: 0.45,
+                      easing: "quadratic-out",
+                      type: "slide",
+                      direction: "180°",
+                      fade: true,
+                    },
+                  ],
+                },
+              ]
+            : []),
           {
             type: "audio",
             name: voiceName,
@@ -211,14 +372,14 @@ function buildCreatomateRenderScript(content, baseUrl) {
             type: "text",
             name: `subtitles_scene_${idx + 1}`,
             text: "Subtitle",
-            y: "87%",
+            y: "88%",
             width: "84%",
-            height: "16%",
+            height: "15%",
             x_alignment: "50%",
             y_alignment: "50%",
             font_family: "Montserrat",
             font_weight: "700",
-            font_size: "4.8 vmin",
+            font_size: "4.6 vmin",
             fill_color: "#FFFFFF",
             stroke_color: "#000000",
             stroke_width: "1.2 vmin",
