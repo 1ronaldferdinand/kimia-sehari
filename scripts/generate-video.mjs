@@ -157,12 +157,22 @@ async function generateWithAI(env, messages) {
 
   let lastErr;
   for (const model of [...new Set(candidates)]) {
-    try {
-      return await callGemini(GEMINI_API_KEY, model, combinedPrompt);
-    } catch (err) {
-      lastErr = err;
-      if (err.name !== "TimeoutError" && !/\((404|429|503)\)/.test(err.message)) throw err;
-      console.warn(`[AI] ${model} sibuk/tidak tersedia, mencoba model berikutnya...`);
+    const maxAttempts = model.includes("lite") ? 1 : 2;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await callGemini(GEMINI_API_KEY, model, combinedPrompt);
+      } catch (err) {
+        lastErr = err;
+        if (err.name !== "TimeoutError" && !/\((404|429|503)\)/.test(err.message)) {
+          throw err;
+        }
+        if (attempt < maxAttempts && /\((429|503)\)/.test(err.message)) {
+          console.warn(`[AI] ${model} sibuk (percobaan ${attempt}), menunggu 5 detik...`);
+          await new Promise((r) => setTimeout(r, 5000));
+          continue;
+        }
+        console.warn(`[AI] ${model} sibuk/tidak tersedia, mencoba model berikutnya...`);
+      }
     }
   }
   throw lastErr;
@@ -283,7 +293,11 @@ Aturan ketat untuk "tsx_code" (akan disimpan ke remotion/GeneratedScenes.tsx):
    - Zona Konten Utama: \`position: "absolute", top: 200, bottom: 340, left: 56, right: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28\` — ruang \`bottom: 340\` HARUS kosong untuk subtitle.
    - Di dalam Zona Konten Utama: taruh ilustrasi SVG animasi (ukuran maksimal \`width: 860, height: 680\` dengan \`viewBox\` yang pas dan TANPA teks panjang di dalam SVG agar tidak bertabrakan), lalu di BAWAH SVG taruh \`scene.callouts\` dalam flex row (\`display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center"\`).
    - DILARANG menaruh teks \`position: "absolute"\` sembarangan di atas elemen lain!
-4. Animasi HARUS halus dan sinematik: gunakan \`spring({ frame, fps, config: { damping: 16, stiffness: 100 } })\` untuk animasi masuk, \`interpolate\` dengan \`extrapolateLeft: "clamp", extrapolateRight: "clamp"\`, serta \`Math.sin(frame * 0.05)\` untuk gerakan mengambang/berdenyut yang lembut.
+4. Gaya Visual & Animasi WAJIB (konsisten dengan standar premium Kimia Sehari):
+   - Latar belakang gelap elegan \`#0f1f17\` dengan 2 radial-gradient glow lembut (\`rgba(62,142,65,0.25)\` dan \`rgba(212,125,50,0.2)\`, \`filter: "blur(45px)"\`).
+   - Badge kiri atas warna \`#2e7d32\` teks \`#e8f5e9\` dengan \`transform: scale(badgeSpring)\`; judul kanan atas warna \`#a5d6a7\`.
+   - Ilustrasi SVG multi-layer (gradien \`<defs>\`, bentuk organik/molekul/reaksi yang detail untuk tiap \`sceneIndex\` 0..4, \`viewBox="0 0 860 640"\`), dianimasikan halus dengan \`spring({ frame, fps, config: { damping: 14, stiffness: 110 } })\`, \`interpolate\` ter-clamp, dan \`Math.sin(frame * 0.06)\` untuk efek mengambang/berdenyut.
+   - Pill \`scene.callouts\` di bawah SVG memakai gaya kartu glassmorphism (\`rgba(255,255,255,0.08)\`, border \`1px solid rgba(165,214,167,0.35)\`, teks \`#f0fbf4\`) dengan animasi \`spring\` bertahap.
 5. Pastikan TypeScript strict mode valid (semua tipe jelas, tidak ada unused variable, tidak ada \`any\` implisit).
 
 Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
