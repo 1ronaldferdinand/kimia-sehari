@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { parseBuffer } from "music-metadata";
+import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 
 const DAILY_CATEGORIES = [
   "reaksi kimia saat memasak atau memanggang di dapur",
@@ -188,33 +189,59 @@ function runTypecheck() {
   }
 }
 
-async function synthesizeVoice(apiKey, voiceId, text, outPath) {
-  const res = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-    {
-      method: "POST",
-      headers: {
-        "xi-api-key": apiKey,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        text,
-        model_id: "eleven_multilingual_v2",
-        voice_settings: { stability: 0.75, similarity_boost: 0.75 },
-      }),
-      signal: AbortSignal.timeout(30000),
-    }
+async function synthesizeWithEdgeTts(text, outPath) {
+  const tts = new MsEdgeTTS();
+  await tts.setMetadata(
+    "id-ID-ArdiNeural",
+    OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3
   );
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`ElevenLabs API gagal (${res.status}): ${errText}`);
+  const { audioStream } = tts.toStream(text);
+  const chunks = [];
+  for await (const chunk of audioStream) {
+    chunks.push(chunk);
   }
-
-  const buf = Buffer.from(await res.arrayBuffer());
+  const buf = Buffer.concat(chunks);
+  tts.close();
   fs.writeFileSync(outPath, buf);
   const meta = await parseBuffer(buf, "audio/mpeg");
   return meta.format.duration || 5;
+}
+
+async function synthesizeVoice(apiKey, voiceId, text, outPath) {
+  if (apiKey) {
+    try {
+      const res = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": apiKey,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            text,
+            model_id: "eleven_multilingual_v2",
+            voice_settings: { stability: 0.75, similarity_boost: 0.75 },
+          }),
+          signal: AbortSignal.timeout(30000),
+        }
+      );
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`ElevenLabs API gagal (${res.status}): ${errText}`);
+      }
+
+      const buf = Buffer.from(await res.arrayBuffer());
+      fs.writeFileSync(outPath, buf);
+      const meta = await parseBuffer(buf, "audio/mpeg");
+      return meta.format.duration || 5;
+    } catch (err) {
+      console.warn(`[TTS] ElevenLabs gagal (${err.message.slice(0, 120)}), fallback ke Edge TTS (id-ID-ArdiNeural)...`);
+    }
+  }
+
+  return synthesizeWithEdgeTts(text, outPath);
 }
 
 async function main() {
@@ -229,9 +256,6 @@ async function main() {
 
   if (!ANTHROPIC_API_KEY && !process.env.GEMINI_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY atau GEMINI_API_KEY belum disetel.");
-  }
-  if (!ELEVENLABS_API_KEY) {
-    throw new Error("ELEVENLABS_API_KEY belum disetel.");
   }
 
   const { dateStr, category, angle } = getDailyFocus();
