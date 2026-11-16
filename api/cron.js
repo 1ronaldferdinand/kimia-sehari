@@ -130,9 +130,9 @@ function buildCreatomateRenderScript(content, baseUrl) {
   ];
 
   const moleculeParticles = [
-    { x: "14%", y: "31%", size: "34 px", color: "#2E6F40", delay: 0.25 },
-    { x: "86%", y: "36%", size: "26 px", color: "#0284C7", delay: 0.45 },
-    { x: "84%", y: "72%", size: "30 px", color: "#F59E0B", delay: 0.65 },
+    { x: "14%", y: "31%", size: "34 px", color: "rgba(46, 111, 64, 0.75)", delay: 0.25 },
+    { x: "86%", y: "36%", size: "26 px", color: "rgba(2, 132, 199, 0.75)", delay: 0.45 },
+    { x: "84%", y: "72%", size: "30 px", color: "rgba(245, 158, 11, 0.75)", delay: 0.65 },
   ];
 
   return {
@@ -205,7 +205,7 @@ function buildCreatomateRenderScript(content, baseUrl) {
             x_padding: "28 px",
             y_padding: "12 px",
             background_color: "#2E6F40",
-            background_border_radius: "50%",
+            background_border_radius: "24 px",
             font_family: "Inter",
             font_weight: "800",
             font_size: "2.3 vmin",
@@ -281,9 +281,8 @@ function buildCreatomateRenderScript(content, baseUrl) {
             y: p.y,
             width: p.size,
             height: p.size,
-            border_radius: "50%",
+            border_radius: "20 px",
             fill_color: p.color,
-            opacity: "75%",
             animations: [
               {
                 time: p.delay,
@@ -311,7 +310,7 @@ function buildCreatomateRenderScript(content, baseUrl) {
                   x_padding: "22 px",
                   y_padding: "10 px",
                   background_color: "#0284C7",
-                  background_border_radius: "50%",
+                  background_border_radius: "24 px",
                   font_family: "Inter",
                   font_weight: "800",
                   font_size: "2.0 vmin",
@@ -343,7 +342,7 @@ function buildCreatomateRenderScript(content, baseUrl) {
                   x_padding: "22 px",
                   y_padding: "10 px",
                   background_color: "#2E6F40",
-                  background_border_radius: "50%",
+                  background_border_radius: "24 px",
                   font_family: "Inter",
                   font_weight: "800",
                   font_size: "2.0 vmin",
