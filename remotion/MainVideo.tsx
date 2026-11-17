@@ -143,7 +143,19 @@ const SceneWrapper: React.FC<{
       : 1;
 
   return (
-    <AbsoluteFill style={{ opacity: Math.min(fadeIn, fadeOut) }}>
+    <AbsoluteFill
+      style={{
+        opacity: Math.min(fadeIn, fadeOut),
+        transform: `scale(${
+          sceneIndex > 0
+            ? interpolate(frame, [0, 12], [1.03, 1], {
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+              })
+            : 1
+        })`,
+      }}
+    >
       <GeneratedScene
         sceneIndex={sceneIndex}
         totalScenes={totalScenes}

@@ -296,11 +296,11 @@ Aturan ketat untuk "tsx_code" (akan disimpan ke remotion/GeneratedScenes.tsx):
    - Zona Konten Utama: \`position: "absolute", top: 200, bottom: 340, left: 56, right: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28\` — ruang \`bottom: 340\` HARUS kosong untuk subtitle.
    - Di dalam Zona Konten Utama: taruh ilustrasi SVG animasi (ukuran maksimal \`width: 860, height: 680\` dengan \`viewBox\` yang pas dan TANPA teks panjang di dalam SVG agar tidak bertabrakan), lalu di BAWAH SVG taruh \`scene.callouts\` dalam flex row (\`display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center"\`).
    - DILARANG menaruh teks \`position: "absolute"\` sembarangan di atas elemen lain!
-4. Gaya Visual & Animasi WAJIB (konsisten dengan standar premium Kimia Sehari):
-   - Latar belakang gelap elegan \`#0f1f17\` dengan 2 radial-gradient glow lembut (\`rgba(62,142,65,0.25)\` dan \`rgba(212,125,50,0.2)\`, \`filter: "blur(45px)"\`).
-   - Badge kiri atas warna \`#2e7d32\` teks \`#e8f5e9\` dengan \`transform: scale(badgeSpring)\`; judul kanan atas warna \`#a5d6a7\`.
-   - Ilustrasi SVG multi-layer (gradien \`<defs>\`, bentuk organik/molekul/reaksi yang detail untuk tiap \`sceneIndex\` 0..4, \`viewBox="0 0 860 640"\`), dianimasikan halus dengan \`spring({ frame, fps, config: { damping: 14, stiffness: 110 } })\`, \`interpolate\` ter-clamp, dan \`Math.sin(frame * 0.06)\` untuk efek mengambang/berdenyut.
-   - Pill \`scene.callouts\` di bawah SVG memakai gaya kartu glassmorphism (\`rgba(255,255,255,0.08)\`, border \`1px solid rgba(165,214,167,0.35)\`, teks \`#f0fbf4\`) dengan animasi \`spring\` bertahap.
+4. Hukum Motion Graphic Anti-PPT (wajib dipatuhi agar terasa seperti video sinematik, bukan slide):
+   - **Satu adegan = 3–5 elemen hidup yang masuk bertahap** (\`stagger\` di frame \`0, 10, 20, 30\`): JANGAN buat 1 gambar diam. Gunakan panah/garis reaksi yang menggambar diri (\`strokeDashoffset\`), molekul yang mengorbit/bertumbukan, cairan/partikel naik, atau bentuk yang bertransformasi.
+   - **Pergantian ukuran shot & gerak kamera tiap adegan**: Adegan 0 wide bernapas pelan; Adegan 1 zoom mendekat ke zona reaksi (\`scale\` \`1 -> 1.14\`); Adegan 2 fokus mikroskop; Adegan 3 pan/aliran mekanisme A + B -> C; Adegan 4 pull-back (\`1.1 -> 1\`).
+   - **Anti teks menumpuk**: Tiap label di \`scene.callouts\` maksimal 3–4 kata (tanpa paragraf/body copy di panggung karena narasi sudah ada di suara & subtitle).
+   - **Gaya Visual**: Latar gelap \`#0f1f17\` dengan 2 radial-gradient glow yang bergeser pelan (\`Math.sin(frame * 0.03)\`), badge kiri atas \`#2e7d32\` teks \`#e8f5e9\`, judul kanan atas \`#a5d6a7\`, SVG multi-layer (\`<defs>\` gradien, \`viewBox="0 0 860 640"\`), animasi \`spring({ frame, fps, config: { damping: 14, stiffness: 110 } })\`, dan kartu glassmorphism (\`rgba(255,255,255,0.08)\`, border \`1px solid rgba(165,214,167,0.35)\`) untuk \`scene.callouts\`.
 5. Pastikan TypeScript strict mode valid (semua tipe jelas, tidak ada unused variable, tidak ada \`any\` implisit).
 
 Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
