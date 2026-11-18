@@ -1,17 +1,10 @@
 name: Daily Kimia Sehari Video
 
 on:
-  schedule:
-    # Off-peak minute (:13) avoids GitHub Actions top-of-hour (:00) queue drops.
-    - cron: "13 1 * * *" # ~08:13 WIB (Pagi)
-    - cron: "13 2 * * *" # ~09:13 WIB (Auto-retry Pagi jika 08:13 gagal)
-    - cron: "13 8 * * *" # ~15:13 WIB (Sore)
-    - cron: "13 9 * * *" # ~16:13 WIB (Auto-retry Sore jika 15:13 gagal)
   workflow_dispatch:
 
 permissions:
   contents: write
-  actions: read
 
 jobs:
   render-and-publish:
@@ -19,56 +12,19 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Guard scheduled run (time window + skip retry if slot succeeded)
-        id: guard
-        if: github.event_name == 'schedule'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          WIB_HOUR=$((10#$(TZ=Asia/Jakarta date +%H)))
-          SCHED="${{ github.event.schedule }}"
-
-          # Reject runs delayed by GitHub Actions outside their intended WIB window.
-          if [[ "$SCHED" == "13 1 * * *" || "$SCHED" == "13 2 * * *" ]] && (( WIB_HOUR < 7 || WIB_HOUR > 11 )); then
-            echo "Slot Pagi ($SCHED) terlambat hingga jam $WIB_HOUR WIB, dilewati."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [[ "$SCHED" == "13 8 * * *" || "$SCHED" == "13 9 * * *" ]] && (( WIB_HOUR < 14 || WIB_HOUR > 18 )); then
-            echo "Slot Sore ($SCHED) terlambat hingga jam $WIB_HOUR WIB, dilewati."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # For retry crons (09:13 / 16:13 WIB), skip if a run succeeded in the last 3 hours.
-          if [[ "$SCHED" == "13 2 * * *" || "$SCHED" == "13 9 * * *" ]]; then
-            CUTOFF=$(date -u -d '3 hours ago' +%Y-%m-%dT%H:%M:%SZ)
-            COUNT=$(gh run list --repo "${{ github.repository }}" --workflow=daily-video.yml --status=success --limit=10 --json createdAt --jq "[.[] | select(.createdAt >= \"$CUTOFF\")] | length")
-            if [ "$COUNT" -gt 0 ]; then
-              echo "Slot sudah sukses dalam 3 jam terakhir, lewati jadwal retry."
-              echo "skip=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-          fi
-          echo "skip=false" >> "$GITHUB_OUTPUT"
-
       - name: Checkout repository
-        if: steps.guard.outputs.skip != 'true'
         uses: actions/checkout@v4
 
       - name: Setup Node.js
-        if: steps.guard.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
-        if: steps.guard.outputs.skip != 'true'
         run: npm install
 
       - name: Generate motion graphic & render Remotion video
-        if: steps.guard.outputs.skip != 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -78,7 +34,6 @@ jobs:
         run: node scripts/generate-video.mjs
 
       - name: Upload video for public HTTPS URL (works for Private repos)
-        if: steps.guard.outputs.skip != 'true'
         id: release
         run: |
           VIDEO_URL=$(node -e '
@@ -110,7 +65,7 @@ jobs:
           echo "video_url=$VIDEO_URL" >> "$GITHUB_OUTPUT"
 
       - name: Trigger Make.com Webhook (Telegram + IG Reels)
-        if: steps.guard.outputs.skip != 'true'
+        env:
         env:
           MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
           VIDEO_URL: ${{ steps.release.outputs.video_url }}
