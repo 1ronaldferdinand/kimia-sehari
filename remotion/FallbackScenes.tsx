@@ -10,10 +10,10 @@ import type { SceneRendererProps } from "./types";
 
 const SCENE_PALETTES = [
   { bg: "#F7F4EC", accent: "#2E6F40", secondary: "#0284C7", dark: "#3B281E" },
-  { bg: "#EFE9DC", accent: "#0284C7", secondary: "#F59E0B", dark: "#3B281E" },
-  { bg: "#0F172A", accent: "#4CAF50", secondary: "#38BDF8", dark: "#F8FAFC" },
+  { bg: "#FAF8F3", accent: "#0284C7", secondary: "#F59E0B", dark: "#3B281E" },
+  { bg: "#F5F2EB", accent: "#2E6F40", secondary: "#0284C7", dark: "#3B281E" },
   { bg: "#F7F4EC", accent: "#D97706", secondary: "#2E6F40", dark: "#3B281E" },
-  { bg: "#F5F2EB", accent: "#2E6F40", secondary: "#6D4C41", dark: "#3B281E" },
+  { bg: "#FAF8F3", accent: "#2E6F40", secondary: "#6D4C41", dark: "#3B281E" },
 ];
 
 /** Default animated Remotion scene used directly or as fallback if generated TSX fails typecheck. */
@@ -25,7 +25,7 @@ export const GeneratedScene: React.FC<SceneRendererProps> = ({
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const palette = SCENE_PALETTES[sceneIndex % SCENE_PALETTES.length];
-  const isDark = sceneIndex === 2;
+  const isDark = false;
 
   const badgeSpring = spring({ frame, fps, config: { damping: 14, stiffness: 120 } });
   const titleSpring = spring({
