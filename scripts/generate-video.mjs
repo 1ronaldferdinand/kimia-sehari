@@ -313,7 +313,7 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
     { "id": 2, "badge": "Mengamati Lebih Dekat", "narration": "24-28 kata...", "callouts": ["LABEL 1", "LABEL 2"] },
     { "id": 3, "badge": "Zoom Mikroskop", "narration": "26-30 kata...", "callouts": ["MOLEKUL A", "MOLEKUL B"] },
     { "id": 4, "badge": "Mekanisme Reaksi", "narration": "26-30 kata...", "callouts": ["PROSES", "HASIL"] },
-    { "id": 5, "badge": "Ringkasan", "narration": "24-28 kata...", "callouts": ["POIN 1", "POIN 2"] }
+    { "id": 5, "badge": "Ringkasan", "narration": "24-28 kata dan WAJIB diakhiri dengan kalimat persis: Selanjutnya kita bahas apa lagi?", "callouts": ["POIN 1", "POIN 2"] }
   ],
   "tsx_code": "...kode TypeScript lengkap..."
 }`;
@@ -365,6 +365,12 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
   const scenesWithAudio = [];
   for (let i = 0; i < generated.scenes.length; i++) {
     const sc = generated.scenes[i];
+    if (
+      i === generated.scenes.length - 1 &&
+      !/selanjutnya kita bahas apa lagi/i.test(sc.narration || "")
+    ) {
+      sc.narration = `${String(sc.narration || "").trim()} Selanjutnya kita bahas apa lagi?`.trim();
+    }
     const relAudio = `audio/scene-${i + 1}.mp3`;
     const absAudio = path.resolve("public", relAudio);
     const durSec = await synthesizeVoice(
