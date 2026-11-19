@@ -281,39 +281,43 @@ async function main() {
       ? `\nJangan gunakan topik yang sudah pernah dibahas berikut: ${recentTopics.join(", ")}.`
       : "";
 
+  const FPS = 60;
   const prompt = `Tanggal edisi: ${dateStr}.
 Buatkan satu topik riset kimia sehari-hari di alam dengan fokus tema "${category}" dari sudut pandang "${angle}".${exclusionLine}
 Gunakan gaya bahasa "Kimia Sehari": ramah, santai, edukatif.
-Total durasi narasi suara harus sekitar 50-60 detik (sekitar 125-145 kata total, dibagi ke 5 adegan berurutan).
+Total durasi narasi suara harus sekitar 50-65 detik (sekitar 125-150 kata total), dibagi secara FLEKSIBEL ke dalam **6 sampai 8 adegan** berurutan (15-22 kata per adegan) agar tiap 1 konsep visual punya adegannya sendiri dan sangat mudah dipahami viewer.
 
 Kamu juga harus menulis kode React + Remotion TSX yang lengkap di key "tsx_code" untuk merender motion graphic unik yang relevan dengan topik tersebut!
 
 Aturan ketat untuk "tsx_code" (akan disimpan ke remotion/GeneratedScenes.tsx):
 1. Import HANYA dari "react", "remotion" (AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate, Easing), dan "./types" (import type { SceneRendererProps } from "./types"). JANGAN import library lain.
-2. Export bernama persis: \`export const GeneratedScene: React.FC<SceneRendererProps> = ({ sceneIndex, totalScenes, scene, judulPendek }) => { ... }\`
-3. WAJIB pakai tata letak 3 zona anti-tumpang-tindih (canvas 1080x1920, 30fps):
+2. Export bernama persis: \`export const GeneratedScene: React.FC<SceneRendererProps> = ({ sceneIndex, totalScenes, scene, judulPendek }) => { ... }\` — pastikan menangani seluruh \`sceneIndex\` dari \`0\` sampai \`totalScenes - 1\` (gunakan \`switch\` / array dengan fallback aman).
+3. WAJIB pakai tata letak 3 zona anti-tumpang-tindih (canvas 1080x1920, **60fps**):
    - Zona Header: \`position: "absolute", top: 96, left: 56, right: 56, display: "flex", justifyContent: "space-between", alignItems: "center"\` (kiri: pill \`scene.badge\`, kanan: \`judulPendek\` maxWidth 460).
    - Zona Konten Utama: \`position: "absolute", top: 200, bottom: 340, left: 56, right: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28\` — ruang \`bottom: 340\` HARUS kosong untuk subtitle.
    - Di dalam Zona Konten Utama: taruh ilustrasi SVG animasi (ukuran maksimal \`width: 860, height: 680\` dengan \`viewBox\` yang pas dan TANPA teks panjang di dalam SVG agar tidak bertabrakan), lalu di BAWAH SVG taruh \`scene.callouts\` dalam flex row (\`display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center"\`).
    - DILARANG menaruh teks \`position: "absolute"\` sembarangan di atas elemen lain!
-4. Hukum Motion Graphic Anti-PPT (wajib dipatuhi agar terasa seperti video sinematik, bukan slide):
-   - **Satu adegan = 3–5 elemen hidup yang masuk bertahap** (\`stagger\` di frame \`0, 10, 20, 30\`): JANGAN buat 1 gambar diam. Gunakan panah/garis reaksi yang menggambar diri (\`strokeDashoffset\`), molekul yang mengorbit/bertumbukan, cairan/partikel naik, atau bentuk yang bertransformasi.
-   - **Pergantian ukuran shot & gerak kamera tiap adegan**: Adegan 0 wide bernapas pelan; Adegan 1 zoom mendekat ke zona reaksi (\`scale\` \`1 -> 1.14\`); Adegan 2 fokus mikroskop; Adegan 3 pan/aliran mekanisme A + B -> C; Adegan 4 pull-back (\`1.1 -> 1\`).
+4. Hukum Motion Graphic Anti-PPT & Halus 60fps (wajib dipatuhi agar mudah dilihat & dipahami viewer):
+   - **Berbasis waktu detik (\`const t = frame / fps\`)**: Karena video dirender di **60fps**, SELALU gunakan \`t = frame / fps\` atau \`fps\` (mis. \`Math.sin(t * 2.2)\`, delay \`0.25 * fps\`, \`0.6 * fps\`, \`1.1 * fps\`) agar ritme animasi sangat mulus, tidak terlalu cepat, dan enak diikuti mata.
+   - **Progresi bertahap dalam tiap adegan (3–5 elemen hidup)**: Objek utama masuk dulu (\`t = 0..0.6s\`), diikuti proses reaksi/panah menggambar diri via \`strokeDashoffset\` atau molekul bergerak (\`t = 0.6..2.0s\`), lalu highlight hasil + \`scene.callouts\` (\`t = 1.2..2.5s\`). Gunakan \`Easing.out(Easing.cubic)\` dan \`spring({ frame, fps, config: { damping: 18, stiffness: 90 } })\`.
+   - **Pergantian ukuran shot & gerak kamera tiap adegan**: Variasikan framing antar adegan (wide bernapas -> zoom mendekat \`1 -> 1.12\` -> fokus mikroskop -> aliran reaksi A + B -> C -> pull-back penutup \`1.08 -> 1\`).
    - **Anti teks menumpuk**: Tiap label di \`scene.callouts\` maksimal 3–4 kata (tanpa paragraf/body copy di panggung karena narasi sudah ada di suara & subtitle).
-   - **Gaya Visual**: Latar belakang terang hangat **Cream / White Bone** (\`#F7F4EC\` / \`#FAF8F3\`) dengan 2 radial-gradient glow lembut yang bergeser pelan (\`rgba(46,111,64,0.12)\` dan \`rgba(217,119,6,0.10)\`, \`Math.sin(frame * 0.03)\`), badge kiri atas \`#2E6F40\` teks \`#FFFFFF\`, judul kanan atas \`#3B281E\`, SVG multi-layer kontras tinggi di atas cream (\`<defs>\` gradien, \`viewBox="0 0 860 640"\`), animasi \`spring({ frame, fps, config: { damping: 14, stiffness: 110 } })\`, dan kartu \`scene.callouts\` berwarna \`#FFFFFF\` dengan border \`1px solid rgba(46,111,64,0.28)\`, shadow \`0 8px 24px rgba(59,40,30,0.08)\`, serta teks \`#3B281E\`.
+   - **Gaya Visual**: Latar belakang terang hangat **Cream / White Bone** (\`#F7F4EC\` / \`#FAF8F3\`) dengan 2 radial-gradient glow lembut yang bergeser pelan (\`rgba(46,111,64,0.12)\` dan \`rgba(217,119,6,0.10)\`, \`Math.sin(t * 1.2)\`), badge kiri atas \`#2E6F40\` teks \`#FFFFFF\`, judul kanan atas \`#3B281E\`, SVG multi-layer kontras tinggi di atas cream (\`<defs>\` gradien, \`viewBox="0 0 860 640"\`), dan kartu \`scene.callouts\` berwarna \`#FFFFFF\` dengan border \`1px solid rgba(46,111,64,0.28)\`, shadow \`0 8px 24px rgba(59,40,30,0.08)\`, serta teks \`#3B281E\`.
 5. Pastikan TypeScript strict mode valid (semua tipe jelas, tidak ada unused variable, tidak ada \`any\` implisit).
 
-Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
+Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur (6 sampai 8 adegan di array "scenes"):
 {
   "topik": "Judul lengkap konten",
   "judul_pendek": "Judul singkat maks 6 kata",
   "caption": "Caption Instagram & TikTok lengkap dengan hashtag",
   "scenes": [
-    { "id": 1, "badge": "Fakta Alam", "narration": "24-28 kata...", "callouts": ["LABEL 1", "LABEL 2"] },
-    { "id": 2, "badge": "Mengamati Lebih Dekat", "narration": "24-28 kata...", "callouts": ["LABEL 1", "LABEL 2"] },
-    { "id": 3, "badge": "Zoom Mikroskop", "narration": "26-30 kata...", "callouts": ["MOLEKUL A", "MOLEKUL B"] },
-    { "id": 4, "badge": "Mekanisme Reaksi", "narration": "26-30 kata...", "callouts": ["PROSES", "HASIL"] },
-    { "id": 5, "badge": "Ringkasan", "narration": "24-28 kata dan WAJIB diakhiri dengan kalimat persis: Selanjutnya kita bahas apa lagi?", "callouts": ["POIN 1", "POIN 2"] }
+    { "id": 1, "badge": "Fakta Alam", "narration": "15-22 kata hook penasaran...", "callouts": ["LABEL 1", "LABEL 2"] },
+    { "id": 2, "badge": "Pengamatan Awal", "narration": "15-22 kata...", "callouts": ["LABEL 1", "LABEL 2"] },
+    { "id": 3, "badge": "Zoom Lebih Dekat", "narration": "15-22 kata...", "callouts": ["LABEL 1", "LABEL 2"] },
+    { "id": 4, "badge": "Level Molekul", "narration": "15-22 kata...", "callouts": ["MOLEKUL A", "MOLEKUL B"] },
+    { "id": 5, "badge": "Proses Reaksi", "narration": "15-22 kata...", "callouts": ["PROSES", "KATALIS"] },
+    { "id": 6, "badge": "Hasil Reaksi", "narration": "15-22 kata...", "callouts": ["HASIL", "EFEK NYATA"] },
+    { "id": 7, "badge": "Ringkasan", "narration": "15-22 kata dan WAJIB diakhiri dengan kalimat persis: Selanjutnya kita bahas apa lagi?", "callouts": ["POIN 1", "POIN 2"] }
   ],
   "tsx_code": "...kode TypeScript lengkap..."
 }`;
@@ -358,7 +362,7 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
     console.log("[Typecheck] GeneratedScenes.tsx valid!");
   }
 
-  console.log("[2/4] Generate voiceover ElevenLabs untuk 5 adegan...");
+  console.log(`[2/4] Generate voiceover untuk ${generated.scenes.length} adegan...`);
   fs.mkdirSync(path.resolve("public/audio"), { recursive: true });
   fs.mkdirSync(path.resolve("out"), { recursive: true });
 
@@ -379,7 +383,7 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
       sc.narration,
       absAudio
     );
-    const durationInFrames = Math.ceil((durSec + 0.45) * 30);
+    const durationInFrames = Math.ceil((durSec + 0.5) * FPS);
     console.log(`  - Scene ${i + 1}: ${durSec.toFixed(2)}s (${durationInFrames} frames)`);
     scenesWithAudio.push({
       ...sc,

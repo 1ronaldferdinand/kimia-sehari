@@ -2,6 +2,7 @@ import React from "react";
 import {
   AbsoluteFill,
   Audio,
+  Easing,
   Series,
   interpolate,
   staticFile,
@@ -118,6 +119,8 @@ const TopProgressBar: React.FC<{
   );
 };
 
+const OVERLAP_FRAMES = 12;
+
 const SceneWrapper: React.FC<{
   scene: SceneSpec;
   sceneIndex: number;
@@ -127,7 +130,8 @@ const SceneWrapper: React.FC<{
   const frame = useCurrentFrame();
   const fadeIn =
     sceneIndex > 0
-      ? interpolate(frame, [0, 10], [0, 1], {
+      ? interpolate(frame, [0, 18], [0, 1], {
+          easing: Easing.out(Easing.cubic),
           extrapolateLeft: "clamp",
           extrapolateRight: "clamp",
         })
@@ -136,24 +140,29 @@ const SceneWrapper: React.FC<{
     sceneIndex < totalScenes - 1
       ? interpolate(
           frame,
-          [scene.durationInFrames - 8, scene.durationInFrames],
+          [scene.durationInFrames - 14, scene.durationInFrames],
           [1, 0],
-          { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+          {
+            easing: Easing.in(Easing.cubic),
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }
         )
+      : 1;
+  const entryScale =
+    sceneIndex > 0
+      ? interpolate(frame, [0, 22], [1.03, 1], {
+          easing: Easing.out(Easing.cubic),
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })
       : 1;
 
   return (
     <AbsoluteFill
       style={{
         opacity: Math.min(fadeIn, fadeOut),
-        transform: `scale(${
-          sceneIndex > 0
-            ? interpolate(frame, [0, 12], [1.03, 1], {
-                extrapolateLeft: "clamp",
-                extrapolateRight: "clamp",
-              })
-            : 1
-        })`,
+        transform: `scale(${entryScale})`,
       }}
     >
       <GeneratedScene
@@ -183,7 +192,8 @@ export const MainVideo: React.FC<VideoProps> = ({ judul_pendek, scenes }) => {
         {scenes.map((scene, idx) => (
           <Series.Sequence
             key={scene.id}
-            durationInFrames={Math.max(30, scene.durationInFrames)}
+            offset={idx === 0 ? 0 : -OVERLAP_FRAMES}
+            durationInFrames={Math.max(60, scene.durationInFrames)}
           >
             <SceneWrapper
               scene={scene}

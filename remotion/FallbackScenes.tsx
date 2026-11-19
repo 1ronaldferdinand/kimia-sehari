@@ -19,6 +19,7 @@ const SCENE_PALETTES = [
 /** Default animated Remotion scene used directly or as fallback if generated TSX fails typecheck. */
 export const GeneratedScene: React.FC<SceneRendererProps> = ({
   sceneIndex,
+  totalScenes,
   scene,
   judulPendek,
 }) => {
@@ -69,7 +70,7 @@ export const GeneratedScene: React.FC<SceneRendererProps> = ({
           opacity: badgeSpring,
         }}
       >
-        {sceneIndex + 1}/5 • {scene.badge}
+        {sceneIndex + 1}/{totalScenes} • {scene.badge}
       </div>
 
       {/* Title */}
