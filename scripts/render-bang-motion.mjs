@@ -113,24 +113,20 @@ export async function renderBangMotion({
   const { server, port } = await startStaticServer(outDir);
   const browser = await puppeteer.launch({
     headless: "new",
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--enable-gpu",
-    ],
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
   });
 
   try {
     const page = await browser.newPage();
+    page.on("pageerror", (e) => console.warn("[PageError]", e.message));
     await page.setViewport({ width: 1080, height: 1920, deviceScaleFactor: 1 });
     await page.goto(`http://127.0.0.1:${port}/scene.html?clean=1`, {
-      waitUntil: "networkidle0",
+      waitUntil: "load",
       timeout: 60000,
     });
     await page.waitForFunction(
       "window.OPENER && window.OPENER.ready && window.OPENER.tl",
-      { timeout: 30000 }
+      { timeout: 60000 }
     );
     await page.evaluate(() => document.fonts.ready);
     await page.evaluate(() => {
