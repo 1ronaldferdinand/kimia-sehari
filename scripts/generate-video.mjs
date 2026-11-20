@@ -1,8 +1,8 @@
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { parseBuffer } from "music-metadata";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
+import { renderBangMotion, validateBangMotionHtml } from "./render-bang-motion.mjs";
 
 const DAILY_CATEGORIES = [
   "reaksi kimia saat memasak atau memanggang di dapur",
@@ -97,7 +97,7 @@ async function callClaude(apiKey, model, messages) {
       temperature: 0.7,
       messages,
     }),
-    signal: AbortSignal.timeout(90000),
+    signal: AbortSignal.timeout(120000),
   });
 
   if (!res.ok) {
@@ -138,7 +138,6 @@ async function generateWithAI(env, messages) {
     ANTHROPIC_API_KEY,
     ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929",
     GEMINI_API_KEY,
-    GEMINI_MODEL = "gemini-flash-latest",
   } = env;
 
   if (ANTHROPIC_API_KEY) {
@@ -146,7 +145,7 @@ async function generateWithAI(env, messages) {
       return await callClaude(ANTHROPIC_API_KEY, ANTHROPIC_MODEL, messages);
     } catch (err) {
       if (!GEMINI_API_KEY) throw err;
-      console.warn(`[AI] Claude gagal (${err.message.slice(0, 120)}), fallback ke Gemini (${GEMINI_MODEL})...`);
+      console.warn(`[AI] Claude gagal (${err.message.slice(0, 120)}), fallback ke Gemini...`);
     }
   }
 
@@ -187,19 +186,6 @@ function extractJson(raw) {
     .replace(/\s*```\s*$/i, "")
     .trim();
   return JSON.parse(cleaned);
-}
-
-function runTypecheck() {
-  const tscBin = path.resolve("node_modules/.bin/tsc");
-  try {
-    execFileSync(tscBin, ["--noEmit"], { stdio: "pipe" });
-    return { ok: true, error: "" };
-  } catch (err) {
-    return {
-      ok: false,
-      error: (err.stdout?.toString() || "") + (err.stderr?.toString() || ""),
-    };
-  }
 }
 
 async function synthesizeWithEdgeTts(text, outPath) {
@@ -257,6 +243,62 @@ async function synthesizeVoice(apiKey, voiceId, text, outPath) {
   return synthesizeWithEdgeTts(text, outPath);
 }
 
+/** Inject __SCENE_DATA__, top progress bar, and synced subtitle overlay into Bang Motion HTML. */
+function injectSceneDataAndOverlay(html, sceneData) {
+  const dataScript = `<script>window.__SCENE_DATA__ = ${JSON.stringify(sceneData)};</script>`;
+  const overlayHtml = `
+<div id="bm-prog" style="position:fixed;top:44px;left:64px;right:64px;height:10px;border-radius:999px;background:rgba(59,40,30,0.16);overflow:hidden;z-index:35;pointer-events:none">
+  <div id="bm-prog-fill" style="width:0%;height:100%;background:#2E6F40;border-radius:999px"></div>
+</div>
+<div id="bm-sub" style="position:fixed;bottom:110px;left:64px;right:64px;display:flex;justify-content:center;z-index:35;pointer-events:none;opacity:0">
+  <div id="bm-sub-box" style="background:rgba(15,23,42,0.86);padding:18px 30px;border-radius:24px;display:flex;flex-wrap:wrap;justify-content:center;gap:8px 14px;box-shadow:0 12px 32px rgba(0,0,0,0.22)"></div>
+</div>
+<script>
+(function(){
+  const d = window.__SCENE_DATA__;
+  if (!d) return;
+  const fill = document.getElementById("bm-prog-fill");
+  const subWrap = document.getElementById("bm-sub");
+  const subBox = document.getElementById("bm-sub-box");
+  window.__syncOverlay = function(t) {
+    const pct = Math.min(100, Math.max(0, (t / Math.max(1, d.totalDuration)) * 100));
+    if (fill) fill.style.width = pct.toFixed(2) + "%";
+    const sc = (d.scenes || []).find((s) => t >= s.start && t < s.start + s.duration);
+    if (!sc || !sc.narration) {
+      if (subWrap) subWrap.style.opacity = "0";
+      return;
+    }
+    if (subWrap) subWrap.style.opacity = "1";
+    const words = sc.narration.trim().split(/\\s+/).filter(Boolean);
+    const chunks = [];
+    for (let i = 0; i < words.length; i += 4) chunks.push(words.slice(i, i + 4));
+    const localProgress = Math.min(0.999, Math.max(0, (t - sc.start) / Math.max(0.1, sc.duration)));
+    const chunkIdx = Math.min(chunks.length - 1, Math.floor(localProgress * chunks.length));
+    const activeWords = chunks[chunkIdx] || [];
+    const wordProgress = (localProgress * chunks.length) - chunkIdx;
+    const activeWordIdx = Math.min(activeWords.length - 1, Math.floor(wordProgress * activeWords.length));
+    if (subBox) {
+      subBox.innerHTML = activeWords.map((w, idx) =>
+        '<span style="font-family:Montserrat,Plus Jakarta Sans,sans-serif;font-size:42px;font-weight:800;line-height:1.25;color:' +
+        (idx === activeWordIdx ? '#FDE047' : '#FFFFFF') + '">' + w.replace(/</g, '&lt;') + '</span>'
+      ).join('');
+    }
+  };
+})();
+</script>`;
+
+  let out = html.replace(/<head([^>]*)>/i, `<head$1>\n${dataScript}`);
+  if (!out.includes("__SCENE_DATA__")) {
+    out = `${dataScript}\n${out}`;
+  }
+  if (/<\/body>/i.test(out)) {
+    out = out.replace(/<\/body>/i, `${overlayHtml}\n</body>`);
+  } else {
+    out += overlayHtml;
+  }
+  return out;
+}
+
 async function main() {
   const {
     ANTHROPIC_API_KEY,
@@ -281,31 +323,30 @@ async function main() {
       ? `\nJangan gunakan topik yang sudah pernah dibahas berikut: ${recentTopics.join(", ")}.`
       : "";
 
-  const FPS = 60;
   const prompt = `Tanggal edisi: ${dateStr}.
 Buatkan satu topik riset kimia sehari-hari di alam dengan fokus tema "${category}" dari sudut pandang "${angle}".${exclusionLine}
 Gunakan gaya bahasa "Kimia Sehari": ramah, santai, edukatif.
-Total durasi narasi suara harus sekitar 50-65 detik (sekitar 125-150 kata total), dibagi secara FLEKSIBEL ke dalam **6 sampai 8 adegan** berurutan (15-22 kata per adegan) agar tiap 1 konsep visual punya adegannya sendiri dan sangat mudah dipahami viewer.
+Total durasi narasi suara harus sekitar 50-65 detik (sekitar 125-150 kata total), dibagi ke **6 sampai 8 adegan** berurutan (15-22 kata per adegan).
 
-Kamu juga harus menulis kode React + Remotion TSX yang lengkap di key "tsx_code" untuk merender motion graphic unik yang relevan dengan topik tersebut!
+Kamu juga harus menulis file HTML tunggal yang lengkap di key "html_code" mengikuti arsitektur **Bang Motion (HTML + CSS + GSAP 3.12.5)**!
 
-Aturan ketat untuk "tsx_code" (akan disimpan ke remotion/GeneratedScenes.tsx):
-1. Import HANYA dari "react", "remotion" (AbsoluteFill, useCurrentFrame, useVideoConfig, spring, interpolate, Easing), dan "./types" (import type { SceneRendererProps } from "./types"). JANGAN import library lain.
-2. Export bernama persis: \`export const GeneratedScene: React.FC<SceneRendererProps> = ({ sceneIndex, totalScenes, scene, judulPendek }) => { ... }\` — pastikan menangani seluruh \`sceneIndex\` dari \`0\` sampai \`totalScenes - 1\` (gunakan \`switch\` / array dengan fallback aman).
-3. WAJIB pakai tata letak 3 zona anti-tumpang-tindih (canvas 1080x1920, **60fps**):
-   - Zona Header: \`position: "absolute", top: 96, left: 56, right: 56, display: "flex", justifyContent: "space-between", alignItems: "center"\` (kiri: pill \`scene.badge\`, kanan: \`judulPendek\` maxWidth 460).
-   - Zona Konten Utama: \`position: "absolute", top: 200, bottom: 340, left: 56, right: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28\` — ruang \`bottom: 340\` HARUS kosong untuk subtitle.
-   - Di dalam Zona Konten Utama: taruh ilustrasi SVG animasi (ukuran maksimal \`width: 860, height: 680\` dengan \`viewBox\` yang pas dan TANPA teks panjang di dalam SVG agar tidak bertabrakan), lalu di BAWAH SVG taruh \`scene.callouts\` dalam flex row (\`display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center"\`).
-   - DILARANG menaruh teks \`position: "absolute"\` sembarangan di atas elemen lain!
-4. Hukum Motion Graphic Anti-PPT & Halus 60fps (wajib dipatuhi agar mudah dilihat & dipahami viewer):
-   - **Berbasis waktu detik (\`const t = frame / fps\`)**: Karena video dirender di **60fps**, SELALU gunakan \`t = frame / fps\` atau \`fps\` (mis. \`Math.sin(t * 2.2)\`, delay \`0.25 * fps\`, \`0.6 * fps\`, \`1.1 * fps\`) agar ritme animasi sangat mulus, tidak terlalu cepat, dan enak diikuti mata.
-   - **Progresi bertahap dalam tiap adegan (3–5 elemen hidup)**: Objek utama masuk dulu (\`t = 0..0.6s\`), diikuti proses reaksi/panah menggambar diri via \`strokeDashoffset\` atau molekul bergerak (\`t = 0.6..2.0s\`), lalu highlight hasil + \`scene.callouts\` (\`t = 1.2..2.5s\`). Gunakan \`Easing.out(Easing.cubic)\` dan \`spring({ frame, fps, config: { damping: 18, stiffness: 90 } })\`.
-   - **Pergantian ukuran shot & gerak kamera tiap adegan**: Variasikan framing antar adegan (wide bernapas -> zoom mendekat \`1 -> 1.12\` -> fokus mikroskop -> aliran reaksi A + B -> C -> pull-back penutup \`1.08 -> 1\`).
-   - **Anti teks menumpuk**: Tiap label di \`scene.callouts\` maksimal 3–4 kata (tanpa paragraf/body copy di panggung karena narasi sudah ada di suara & subtitle).
-   - **Gaya Visual**: Latar belakang terang hangat **Cream / White Bone** (\`#F7F4EC\` / \`#FAF8F3\`) dengan 2 radial-gradient glow lembut yang bergeser pelan (\`rgba(46,111,64,0.12)\` dan \`rgba(217,119,6,0.10)\`, \`Math.sin(t * 1.2)\`), badge kiri atas \`#2E6F40\` teks \`#FFFFFF\`, judul kanan atas \`#3B281E\`, SVG multi-layer kontras tinggi di atas cream (\`<defs>\` gradien, \`viewBox="0 0 860 640"\`), dan kartu \`scene.callouts\` berwarna \`#FFFFFF\` dengan border \`1px solid rgba(46,111,64,0.28)\`, shadow \`0 8px 24px rgba(59,40,30,0.08)\`, serta teks \`#3B281E\`.
-5. Pastikan TypeScript strict mode valid (semua tipe jelas, tidak ada unused variable, tidak ada \`any\` implisit).
+Aturan ketat untuk "html_code" (disimpan ke out/scene.html, dirender Puppeteer di viewport 1080x1920):
+1. Muat GSAP dari \`https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js\` dan Google Font \`Plus Jakarta Sans\`.
+2. Baca data timing & judul dari \`window.__SCENE_DATA__\` (berisi \`{ judul_pendek, topik, totalDuration, scenes: [{ badge, start, duration, callouts }] }\`).
+3. **WAJIB ADA COVER THUMBNAIL DI FRAME 0 (\`t = 0.0s .. 0.45s\`)**:
+   - Elemen \`#cover\` menutupi layar penuh pada \`t = 0\` dengan latar **Cream / White Bone (\`#F7F4EC\`)**, badge \`KIMIA SEHARI\` (\`#2E6F40\`), dan **\`judul_pendek\`** berukuran besar (70–78px, tebal 900, warna \`#3B281E\`) di tengah layar — agar frame 0 menjadi thumbnail video yang rapi & terbaca jelas.
+   - Pada \`t = 0.35s\`, animasikan \`#cover\` keluar mulus (\`opacity: 0, scale: 1.06, duration: 0.45, ease: "power3.inOut"\`) menuju Adegan 1!
+4. **Hukum Bang Motion Anti-PPT**:
+   - Latar belakang hangat **Cream / White Bone (\`#F7F4EC\` / \`#FAF8F3\`)** dengan 2 glow orb lembut yang bergerak perlahan sepanjang \`totalDuration\`.
+   - Tata letak 3 zona anti-tumpang-tindih: Header di \`top: 96px\` (\`left: 56px, right: 56px\`), panggung visual di \`top: 200px; bottom: 340px\` (ruang \`bottom: 340px\` HARUS kosong untuk subtitle), callout pills \`#FFFFFF\` berteks \`#3B281E\` di bawah SVG.
+   - Satu dunia/kamera GSAP yang hidup (kamera bernapas/zoom ke zona reaksi, SVG \`strokeDashoffset\` panah menggambar diri, partikel/molekul bergerak, pergantian adegan memakai \`tl.call(...)\` atau \`tl.to(...)\` di waktu \`sc.start\`).
+   - DILARANG menaruh teks panjang di dalam SVG.
+5. **Kontrak Timeline WAJIB**:
+   - Buat \`const tl = gsap.timeline({ paused: true });\` dengan \`tl.to({}, { duration: 0.01 }, data.totalDuration);\` di akhir.
+   - Set \`window.OPENER = { tl, DURATION: data.totalDuration, ready: true };\`
+   - Jika \`!location.search.includes("clean=1")\`, jalankan \`tl.repeat(-1).play(0);\`.
 
-Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur (6 sampai 8 adegan di array "scenes"):
+Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
 {
   "topik": "Judul lengkap konten",
   "judul_pendek": "Judul singkat maks 6 kata",
@@ -319,54 +360,25 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur (6 sampai 8 a
     { "id": 6, "badge": "Hasil Reaksi", "narration": "15-22 kata...", "callouts": ["HASIL", "EFEK NYATA"] },
     { "id": 7, "badge": "Ringkasan", "narration": "15-22 kata dan WAJIB diakhiri dengan kalimat persis: Selanjutnya kita bahas apa lagi?", "callouts": ["POIN 1", "POIN 2"] }
   ],
-  "tsx_code": "...kode TypeScript lengkap..."
+  "html_code": "<!doctype html>..."
 }`;
 
-  console.log(`[1/4] Meminta naskah & kode motion graphic ke AI (${ANTHROPIC_API_KEY ? ANTHROPIC_MODEL : "Gemini"})...`);
+  console.log(`[1/4] Meminta naskah & kode Bang Motion HTML+GSAP ke AI...`);
   const raw = await generateWithAI(process.env, [
     { role: "user", content: prompt },
   ]);
   const generated = extractJson(raw);
 
-  const generatedPath = path.resolve("remotion/GeneratedScenes.tsx");
-  const fallbackPath = path.resolve("remotion/FallbackScenes.tsx");
-
-  fs.writeFileSync(generatedPath, generated.tsx_code, "utf8");
-  let tc = runTypecheck();
-
-  if (!tc.ok) {
-    console.warn("[Typecheck] Gagal pada percobaan pertama, meminta AI memperbaiki error TS...");
-    const fixRaw = await generateWithAI(process.env, [
-      { role: "user", content: prompt },
-      { role: "assistant", content: raw },
-      {
-        role: "user",
-        content: `Kode TSX kamu gagal TypeScript check:\n${tc.error}\n\nPerbaiki ONLY "tsx_code" dan kembalikan JSON murni: { "tsx_code": "..." }`,
-      },
-    ]);
-    try {
-      const fixed = extractJson(fixRaw);
-      if (fixed.tsx_code) {
-        fs.writeFileSync(generatedPath, fixed.tsx_code, "utf8");
-        tc = runTypecheck();
-      }
-    } catch {
-      // Fall through to fallback below.
-    }
-  }
-
-  if (!tc.ok) {
-    console.warn("[Typecheck] Masih gagal, menggunakan FallbackScenes.tsx agar render tetap berjalan.");
-    fs.copyFileSync(fallbackPath, generatedPath);
-  } else {
-    console.log("[Typecheck] GeneratedScenes.tsx valid!");
-  }
+  const outDir = path.resolve("out");
+  const audioDir = path.join(outDir, "audio");
+  fs.mkdirSync(audioDir, { recursive: true });
 
   console.log(`[2/4] Generate voiceover untuk ${generated.scenes.length} adegan...`);
-  fs.mkdirSync(path.resolve("public/audio"), { recursive: true });
-  fs.mkdirSync(path.resolve("out"), { recursive: true });
+  const coverSilenceSec = 0.45;
+  let cursorSec = coverSilenceSec;
+  const audioPaths = [];
+  const timedScenes = [];
 
-  const scenesWithAudio = [];
   for (let i = 0; i < generated.scenes.length; i++) {
     const sc = generated.scenes[i];
     if (
@@ -375,43 +387,97 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur (6 sampai 8 a
     ) {
       sc.narration = `${String(sc.narration || "").trim()} Selanjutnya kita bahas apa lagi?`.trim();
     }
-    const relAudio = `audio/scene-${i + 1}.mp3`;
-    const absAudio = path.resolve("public", relAudio);
+    const absAudio = path.join(audioDir, `scene-${i + 1}.mp3`);
     const durSec = await synthesizeVoice(
       ELEVENLABS_API_KEY,
       ELEVENLABS_VOICE_ID,
       sc.narration,
       absAudio
     );
-    const durationInFrames = Math.ceil((durSec + 0.5) * FPS);
-    console.log(`  - Scene ${i + 1}: ${durSec.toFixed(2)}s (${durationInFrames} frames)`);
-    scenesWithAudio.push({
-      ...sc,
-      audioFile: relAudio,
-      durationInFrames,
+    console.log(`  - Scene ${i + 1}: ${durSec.toFixed(2)}s (start ${cursorSec.toFixed(2)}s)`);
+    audioPaths.push(absAudio);
+    timedScenes.push({
+      id: sc.id || i + 1,
+      badge: sc.badge || "Kimia Sehari",
+      narration: sc.narration,
+      callouts: sc.callouts || [],
+      start: Number(cursorSec.toFixed(3)),
+      duration: Number(durSec.toFixed(3)),
     });
+    cursorSec += durSec;
   }
 
-  const videoProps = {
+  const sceneData = {
     topik: generated.topik,
     judul_pendek: generated.judul_pendek,
-    scenes: scenesWithAudio,
+    totalDuration: Number((cursorSec + 0.4).toFixed(3)),
+    scenes: timedScenes,
   };
-  const propsPath = path.resolve("remotion/props.json");
-  fs.writeFileSync(propsPath, JSON.stringify(videoProps, null, 2), "utf8");
 
-  console.log("[3/4] Merender video Remotion -> out/video.mp4...");
-  const remotionBin = path.resolve("node_modules/.bin/remotion");
-  execFileSync(
-    remotionBin,
-    ["render", "remotion/index.ts", "KimiaSehari", "out/video.mp4", `--props=${propsPath}`],
-    { stdio: "inherit" }
+  const sceneHtmlPath = path.join(outDir, "scene.html");
+  const fallbackHtmlPath = path.resolve("templates/bang-motion-fallback.html");
+
+  fs.writeFileSync(
+    sceneHtmlPath,
+    injectSceneDataAndOverlay(generated.html_code || "", sceneData),
+    "utf8"
   );
+
+  try {
+    await validateBangMotionHtml(outDir);
+    console.log("[Validate] Bang Motion HTML+GSAP valid!");
+  } catch (err) {
+    console.warn(`[Validate] Gagal percobaan pertama (${err.message}), meminta AI memperbaiki...`);
+    let ok = false;
+    try {
+      const fixRaw = await generateWithAI(process.env, [
+        { role: "user", content: prompt },
+        { role: "assistant", content: raw },
+        {
+          role: "user",
+          content: `HTML/GSAP kamu gagal validasi di Puppeteer:\n${err.message}\n\nPerbaiki ONLY "html_code" dan kembalikan JSON murni: { "html_code": "..." }`,
+        },
+      ]);
+      const fixed = extractJson(fixRaw);
+      if (fixed.html_code) {
+        fs.writeFileSync(
+          sceneHtmlPath,
+          injectSceneDataAndOverlay(fixed.html_code, sceneData),
+          "utf8"
+        );
+        await validateBangMotionHtml(outDir);
+        console.log("[Validate] Bang Motion HTML+GSAP valid setelah perbaikan!");
+        ok = true;
+      }
+    } catch {
+      ok = false;
+    }
+
+    if (!ok) {
+      console.warn("[Validate] Masih gagal, menggunakan templates/bang-motion-fallback.html.");
+      const fallbackHtml = fs.readFileSync(fallbackHtmlPath, "utf8");
+      fs.writeFileSync(
+        sceneHtmlPath,
+        injectSceneDataAndOverlay(fallbackHtml, sceneData),
+        "utf8"
+      );
+    }
+  }
+
+  console.log("[3/4] Merender video & thumbnail Bang Motion -> out/video.mp4 & out/thumb.jpg...");
+  await renderBangMotion({
+    outDir,
+    audioPaths,
+    outMp4Path: path.join(outDir, "video.mp4"),
+    outThumbPath: path.join(outDir, "thumb.jpg"),
+    fps: 30,
+    coverSilenceSec,
+  });
 
   await saveTopic(UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, generated.topik);
 
   fs.writeFileSync(
-    path.resolve("out/metadata.json"),
+    path.join(outDir, "metadata.json"),
     JSON.stringify(
       {
         date: dateStr,
@@ -425,7 +491,7 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur (6 sampai 8 a
     "utf8"
   );
 
-  console.log(`[4/4] Selesai! Video: out/video.mp4 | Topik: ${generated.topik}`);
+  console.log(`[4/4] Selesai! Video: out/video.mp4 | Thumbnail: out/thumb.jpg | Topik: ${generated.topik}`);
 }
 
 main().catch((err) => {

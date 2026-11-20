@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1080, height=1920" />
+<title>Kimia Sehari — Bang Motion</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #F7F4EC; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #3B281E; }
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: linear-gradient(170deg, #FAF8F3 0%, #F7F4EC 55%, #EFE9DC 100%); }
+  .orb { position: absolute; border-radius: 50%; filter: blur(60px); pointer-events: none; }
+  #orb1 { width: 620px; height: 620px; left: -140px; top: -120px; background: rgba(46, 111, 64, 0.14); }
+  #orb2 { width: 580px; height: 580px; right: -120px; bottom: 260px; background: rgba(217, 119, 6, 0.12); }
+
+  /* Frame 0 Cover Thumbnail */
+  #cover {
+    position: absolute; inset: 0; z-index: 40;
+    background: linear-gradient(165deg, #FAF8F3 0%, #F7F4EC 60%, #EDE6D6 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 96px 76px; text-align: center;
+  }
+  #cover .c-badge {
+    background: #2E6F40; color: #FFFFFF; padding: 14px 36px; border-radius: 999px;
+    font-size: 28px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+    box-shadow: 0 12px 30px rgba(46, 111, 64, 0.25);
+  }
+  #cover .c-title {
+    margin-top: 38px; font-size: 74px; font-weight: 900; line-height: 1.15; color: #3B281E;
+    max-width: 920px;
+  }
+  #cover .c-sub {
+    margin-top: 28px; font-size: 30px; font-weight: 700; color: #6D4C41;
+  }
+
+  /* Header & World */
+  #header {
+    position: absolute; top: 96px; left: 56px; right: 56px; z-index: 20;
+    display: flex; justify-content: space-between; align-items: center; gap: 20px;
+  }
+  #h-badge {
+    background: #2E6F40; color: #FFFFFF; padding: 12px 28px; border-radius: 999px;
+    font-size: 24px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  #h-title {
+    font-size: 26px; font-weight: 800; color: #3B281E; text-align: right; max-width: 480px;
+  }
+  #world {
+    position: absolute; top: 200px; bottom: 340px; left: 56px; right: 56px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+  }
+  #cam { width: 860px; height: 640px; display: flex; align-items: center; justify-content: center; }
+  #callouts {
+    display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; max-width: 920px;
+  }
+  .pill {
+    background: #FFFFFF; color: #3B281E; border: 1.5px solid rgba(46, 111, 64, 0.28);
+    padding: 16px 28px; border-radius: 999px; font-size: 26px; font-weight: 800;
+    box-shadow: 0 8px 24px rgba(59, 40, 30, 0.08);
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="orb1" class="orb"></div>
+  <div id="orb2" class="orb"></div>
+
+  <div id="header">
+    <div id="h-badge">Kimia Sehari</div>
+    <div id="h-title">Kimia Sehari</div>
+  </div>
+
+  <div id="world">
+    <div id="cam">
+      <svg id="molSvg" viewBox="0 0 860 640" width="860" height="640">
+        <defs>
+          <radialGradient id="gGreen" cx="35%" cy="35%" r="65%">
+            <stop offset="0%" stop-color="#4CAF50"/>
+            <stop offset="100%" stop-color="#2E6F40"/>
+          </radialGradient>
+          <radialGradient id="gBlue" cx="35%" cy="35%" r="65%">
+            <stop offset="0%" stop-color="#38BDF8"/>
+            <stop offset="100%" stop-color="#0284C7"/>
+          </radialGradient>
+          <radialGradient id="gAmber" cx="35%" cy="35%" r="65%">
+            <stop offset="0%" stop-color="#FBBF24"/>
+            <stop offset="100%" stop-color="#D97706"/>
+          </radialGradient>
+        </defs>
+        <g id="orbitGroup" transform="translate(430,320)">
+          <circle id="ring1" r="220" fill="none" stroke="rgba(46,111,64,0.28)" stroke-width="4" stroke-dasharray="14 12"/>
+          <circle id="ring2" r="145" fill="none" stroke="rgba(2,132,199,0.3)" stroke-width="3" stroke-dasharray="10 10"/>
+          <line id="bond1" x1="0" y1="0" x2="180" y2="-110" stroke="#D97706" stroke-width="10" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="220"/>
+          <line id="bond2" x1="0" y1="0" x2="-170" y2="115" stroke="#0284C7" stroke-width="10" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="220"/>
+          <circle id="core" r="76" fill="url(#gGreen)"/>
+          <circle id="sat1" cx="180" cy="-110" r="42" fill="url(#gAmber)"/>
+          <circle id="sat2" cx="-170" cy="115" r="46" fill="url(#gBlue)"/>
+          <circle id="sat3" cx="120" cy="175" r="28" fill="#6D4C41"/>
+        </g>
+      </svg>
+    </div>
+    <div id="callouts"></div>
+  </div>
+
+  <!-- Cover Thumbnail (Frame 0) -->
+  <div id="cover">
+    <div class="c-badge">Kimia Sehari</div>
+    <div class="c-title" id="coverTitle">Keajaiban Kimia di Sekitar Kita</div>
+    <div class="c-sub">Fakta Sains Singkat &bull; 60 Detik</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+(function () {
+  const data = window.__SCENE_DATA__ || {
+    judul_pendek: "Keajaiban Kimia di Sekitar Kita",
+    topik: "Keajaiban Kimia di Sekitar Kita",
+    totalDuration: 30,
+    scenes: [
+      { badge: "Fakta Alam", start: 0.45, duration: 5, callouts: ["FENOMENA ALAM", "REAKSI KIMIA"] }
+    ]
+  };
+
+  document.getElementById("coverTitle").textContent = data.judul_pendek || data.topik || "Kimia Sehari";
+  document.getElementById("h-title").textContent = data.judul_pendek || "Kimia Sehari";
+
+  const tl = gsap.timeline({ paused: true });
+  const dur = Number(data.totalDuration) || 30;
+
+  // Frame 0: Cover thumbnail holds briefly then reveals scene 1
+  tl.to("#cover", { opacity: 0, scale: 1.06, duration: 0.45, ease: "power3.inOut" }, 0.35);
+  tl.set("#cover", { display: "none" }, 0.8);
+
+  // Continuous background & orbital motion across entire duration
+  tl.to("#orb1", { x: 120, y: 80, duration: dur, ease: "sine.inOut" }, 0);
+  tl.to("#orb2", { x: -110, y: -90, duration: dur, ease: "sine.inOut" }, 0);
+  tl.to("#ring1", { rotation: 360, transformOrigin: "0 0", duration: dur, ease: "none" }, 0);
+  tl.to("#ring2", { rotation: -540, transformOrigin: "0 0", duration: dur, ease: "none" }, 0);
+
+  const calloutsEl = document.getElementById("callouts");
+  const badgeEl = document.getElementById("h-badge");
+
+  (data.scenes || []).forEach((sc, idx) => {
+    const t0 = Number(sc.start) || 0.45;
+    const sd = Math.max(1.5, Number(sc.duration) || 4);
+    const camScale = idx % 3 === 1 ? 1.12 : idx % 3 === 2 ? 1.06 : 1.0;
+
+    tl.call(() => {
+      badgeEl.textContent = `${idx + 1}/${data.scenes.length} • ${sc.badge || "Kimia Sehari"}`;
+      calloutsEl.innerHTML = "";
+      (sc.callouts || []).slice(0, 3).forEach((txt) => {
+        const d = document.createElement("div");
+        d.className = "pill";
+        d.textContent = txt;
+        calloutsEl.appendChild(d);
+      });
+    }, null, t0);
+
+    tl.to("#cam", { scale: camScale, duration: sd * 0.85, ease: "power2.inOut" }, t0);
+    tl.fromTo("#bond1", { strokeDashoffset: 220 }, { strokeDashoffset: 0, duration: 0.8, ease: "power3.out" }, t0 + 0.15);
+    tl.fromTo("#bond2", { strokeDashoffset: 220 }, { strokeDashoffset: 0, duration: 0.8, ease: "power3.out" }, t0 + 0.3);
+    tl.fromTo("#core", { scale: 0.86, transformOrigin: "0 0" }, { scale: 1.04, duration: sd * 0.5, yoyo: true, repeat: 1, ease: "sine.inOut" }, t0 + 0.1);
+  });
+
+  // Pad timeline to exact totalDuration
+  tl.to({}, { duration: 0.01 }, dur);
+
+  window.OPENER = { tl, DURATION: dur, ready: true };
+  if (!location.search.includes("clean=1")) {
+    tl.repeat(-1).play(0);
+  }
+})();
+</script>
+</body>
+</html>

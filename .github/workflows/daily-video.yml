@@ -21,10 +21,12 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install dependencies & FFmpeg
+        run: |
+          npm install
+          ffmpeg -version || (sudo apt-get update && sudo apt-get install -y ffmpeg)
 
-      - name: Generate motion graphic & render Remotion video
+      - name: Generate Bang Motion & render MP4 + thumbnail
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -33,41 +35,47 @@ jobs:
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
         run: node scripts/generate-video.mjs
 
-      - name: Upload video for public HTTPS URL (works for Private repos)
+      - name: Upload video & thumbnail for public HTTPS URL
         id: release
         run: |
-          VIDEO_URL=$(node -e '
+          URLS=$(node -e '
             const fs = require("fs");
-            const blob = new Blob([fs.readFileSync("out/video.mp4")], { type: "video/mp4" });
-            (async () => {
+            async function upload(filePath, mime, filename) {
+              const blob = new Blob([fs.readFileSync(filePath)], { type: mime });
               try {
                 const d1 = new FormData();
-                d1.append("files[]", blob, "video.mp4");
+                d1.append("files[]", blob, filename);
                 const r1 = await fetch("https://uguu.se/upload", { method: "POST", body: d1 });
                 const j1 = await r1.json();
-                if (j1?.files?.[0]?.url) {
-                  console.log(j1.files[0].url);
-                  return;
-                }
+                if (j1?.files?.[0]?.url) return j1.files[0].url;
               } catch {}
               const d2 = new FormData();
-              d2.append("file", blob, "video.mp4");
+              d2.append("file", blob, filename);
               const r2 = await fetch("https://tmpfiles.org/api/v1/upload", { method: "POST", body: d2 });
               const j2 = await r2.json();
               if (j2?.data?.url) {
-                console.log(j2.data.url.replace(/^https?:\/\/tmpfiles\.org\//, "https://tmpfiles.org/dl/"));
-                return;
+                return j2.data.url.replace(/^https?:\/\/tmpfiles\.org\//, "https://tmpfiles.org/dl/");
               }
-              throw new Error("All uploaders failed");
+              throw new Error("All uploaders failed for " + filename);
+            }
+            (async () => {
+              const video_url = await upload("out/video.mp4", "video/mp4", "video.mp4");
+              const thumb_url = await upload("out/thumb.jpg", "image/jpeg", "thumb.jpg");
+              console.log(JSON.stringify({ video_url, thumb_url }));
             })();
           ')
-          echo "Uploaded URL: $VIDEO_URL"
+          VIDEO_URL=$(node -e "console.log(JSON.parse(process.argv[1]).video_url)" "$URLS")
+          THUMB_URL=$(node -e "console.log(JSON.parse(process.argv[1]).thumb_url)" "$URLS")
+          echo "Uploaded Video: $VIDEO_URL"
+          echo "Uploaded Thumb: $THUMB_URL"
           echo "video_url=$VIDEO_URL" >> "$GITHUB_OUTPUT"
+          echo "thumb_url=$THUMB_URL" >> "$GITHUB_OUTPUT"
 
       - name: Trigger Make.com Webhook (Telegram + IG Reels)
         env:
           MAKE_WEBHOOK_URL: ${{ secrets.MAKE_WEBHOOK_URL }}
           VIDEO_URL: ${{ steps.release.outputs.video_url }}
+          THUMB_URL: ${{ steps.release.outputs.thumb_url }}
         run: |
           node -e '
             if (!process.env.MAKE_WEBHOOK_URL) {
@@ -82,12 +90,13 @@ jobs:
               body: JSON.stringify({
                 brand: "Kimia Sehari",
                 date: meta.date,
-                palette: ["Cokelat", "Hijau", "Putih"],
+                palette: ["Cream", "Hijau", "Cokelat"],
                 payload: {
                   topik: meta.topik,
                   judul_pendek: meta.judul_pendek,
                   caption: meta.caption,
-                  video_url: process.env.VIDEO_URL
+                  video_url: process.env.VIDEO_URL,
+                  thumb_url: process.env.THUMB_URL
                 }
               })
             }).then(async r => {
