@@ -343,6 +343,7 @@ Aturan ketat untuk "html_code" (disimpan ke out/scene.html, dirender Puppeteer d
    - Tata letak 3 zona anti-tumpang-tindih: Header di \`top: 96px\` (\`left: 56px, right: 56px\`), panggung visual di \`top: 200px; bottom: 340px\` (ruang \`bottom: 340px\` HARUS kosong untuk subtitle), callout pills \`#FFFFFF\` berteks \`#3B281E\` di bawah SVG.
    - Satu dunia/kamera GSAP yang hidup (kamera bernapas/zoom ke zona reaksi, SVG \`strokeDashoffset\` panah menggambar diri, partikel/molekul bergerak, pergantian adegan memakai \`tl.call(...)\` atau \`tl.to(...)\` di waktu \`sc.start\`).
    - DILARANG menaruh teks panjang di dalam SVG.
+   - DILARANG membuat progress bar / timeline bar / subtitle sendiri di HTML karena sudah disediakan otomatis oleh overlay sistem.
 5. **Kontrak Timeline WAJIB**:
    - Buat \`const tl = gsap.timeline({ paused: true });\` dengan \`tl.to({}, { duration: 0.01 }, data.totalDuration);\` di akhir.
    - Set \`window.OPENER = { tl, DURATION: data.totalDuration, ready: true };\`
