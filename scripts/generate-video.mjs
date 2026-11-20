@@ -467,14 +467,32 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
   }
 
   console.log("[3/4] Merender video & thumbnail Bang Motion -> out/video.mp4 & out/thumb.jpg...");
-  await renderBangMotion({
-    outDir,
-    audioPaths,
-    outMp4Path: path.join(outDir, "video.mp4"),
-    outThumbPath: path.join(outDir, "thumb.jpg"),
-    fps: 30,
-    coverSilenceSec,
-  });
+  try {
+    await renderBangMotion({
+      outDir,
+      audioPaths,
+      outMp4Path: path.join(outDir, "video.mp4"),
+      outThumbPath: path.join(outDir, "thumb.jpg"),
+      fps: 30,
+      coverSilenceSec,
+    });
+  } catch (renderErr) {
+    console.warn(`[Render] Gagal pada HTML AI (${renderErr.message}), fallback ke templates/bang-motion-fallback.html...`);
+    const fallbackHtml = fs.readFileSync(fallbackHtmlPath, "utf8");
+    fs.writeFileSync(
+      sceneHtmlPath,
+      injectSceneDataAndOverlay(fallbackHtml, sceneData),
+      "utf8"
+    );
+    await renderBangMotion({
+      outDir,
+      audioPaths,
+      outMp4Path: path.join(outDir, "video.mp4"),
+      outThumbPath: path.join(outDir, "thumb.jpg"),
+      fps: 30,
+      coverSilenceSec,
+    });
+  }
 
   await saveTopic(UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, generated.topik);
 

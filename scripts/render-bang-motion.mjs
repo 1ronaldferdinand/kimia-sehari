@@ -130,10 +130,20 @@ export async function renderBangMotion({
       waitUntil: "load",
       timeout: 60000,
     });
-    await page.waitForFunction(
-      "window.OPENER && window.OPENER.ready && window.OPENER.tl",
-      { timeout: 60000, polling: 200 }
-    );
+    try {
+      await page.waitForFunction(
+        "Boolean(window.OPENER && window.OPENER.ready && window.OPENER.tl)",
+        { timeout: 30000, polling: 250 }
+      );
+    } catch (waitErr) {
+      const diag = await page.evaluate(() => ({
+        readyState: document.readyState,
+        hasGsap: typeof window.gsap,
+        hasOpener: typeof window.OPENER,
+        openerKeys: window.OPENER ? Object.keys(window.OPENER) : [],
+      })).catch(() => ({}));
+      throw new Error(`${waitErr.message} | diag=${JSON.stringify(diag)}`);
+    }
     await page.evaluate(() => document.fonts.ready);
     await page.evaluate(() => {
       window.OPENER.tl.pause(0);
