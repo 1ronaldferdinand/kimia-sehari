@@ -287,7 +287,9 @@ function injectSceneDataAndOverlay(html, sceneData) {
 })();
 </script>`;
 
-  let out = html.replace(/<head([^>]*)>/i, `<head$1>\n${dataScript}`);
+  let out = html
+    .replace(/https?:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/gsap\/[^"']+\/gsap\.min\.js/gi, "/gsap.min.js")
+    .replace(/<head([^>]*)>/i, `<head$1>\n${dataScript}`);
   if (!out.includes("__SCENE_DATA__")) {
     out = `${dataScript}\n${out}`;
   }

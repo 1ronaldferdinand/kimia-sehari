@@ -15,9 +15,15 @@ const MIME = {
 };
 
 function startStaticServer(rootDir) {
+  const localGsap = path.resolve("node_modules/gsap/dist/gsap.min.js");
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
       const reqPath = (req.url || "/").split("?")[0];
+      if (reqPath === "/gsap.min.js" && fs.existsSync(localGsap)) {
+        res.writeHead(200, { "Content-Type": "application/javascript; charset=utf-8" });
+        fs.createReadStream(localGsap).pipe(res);
+        return;
+      }
       const safePath = path.normalize(reqPath).replace(/^(\.\.[/\\])+/, "");
       const filePath = path.join(rootDir, safePath === "/" ? "scene.html" : safePath);
       if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
@@ -83,7 +89,7 @@ export async function validateBangMotionHtml(outDir) {
     });
     await page.waitForFunction(
       "window.OPENER && window.OPENER.ready && window.OPENER.tl && window.OPENER.DURATION > 1",
-      { timeout: 15000 }
+      { timeout: 15000, polling: 200 }
     );
     if (errors.length > 0) {
       throw new Error(`Page JS error: ${errors.join("; ")}`);
@@ -126,7 +132,7 @@ export async function renderBangMotion({
     });
     await page.waitForFunction(
       "window.OPENER && window.OPENER.ready && window.OPENER.tl",
-      { timeout: 60000 }
+      { timeout: 60000, polling: 200 }
     );
     await page.evaluate(() => document.fonts.ready);
     await page.evaluate(() => {
