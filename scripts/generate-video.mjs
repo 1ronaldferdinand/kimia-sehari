@@ -121,6 +121,7 @@ async function callGemini(apiKey, model, promptText) {
         generationConfig: {
           responseMimeType: "application/json",
           temperature: 0.75,
+          maxOutputTokens: 8192,
         },
       }),
       signal: AbortSignal.timeout(180000),
@@ -446,10 +447,20 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
 }`;
 
   console.log(`[1/4] Meminta naskah & struktur visual Bang Motion ke AI...`);
-  const raw = await generateWithAI(process.env, [
-    { role: "user", content: prompt },
-  ]);
-  const generated = extractJson(raw);
+  let generated;
+  for (let aiAttempt = 1; aiAttempt <= 2; aiAttempt++) {
+    const raw = await generateWithAI(process.env, [
+      { role: "user", content: prompt },
+    ]);
+    try {
+      generated = extractJson(raw);
+      if (Array.isArray(generated?.scenes) && generated.scenes.length > 0) break;
+      throw new Error("Struktur JSON tidak memiliki array scenes.");
+    } catch (parseErr) {
+      if (aiAttempt === 2) throw parseErr;
+      console.warn(`[AI] JSON tidak valid (${parseErr.message}), mencoba ulang...`);
+    }
+  }
 
   const outDir = path.resolve("out");
   const audioDir = path.join(outDir, "audio");
