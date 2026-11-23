@@ -208,7 +208,7 @@ async function synthesizeWithEdgeTts(text, outPath) {
 }
 
 async function synthesizeOneWithGeminiTts(apiKey, model, text, outPath, voiceName = "Puck") {
-  const styledPrompt = `Bacakan naskah edukasi sains berikut dalam Bahasa Indonesia dengan gaya ramah, hangat, antusias, artikulasi jelas, dan tempo pas untuk video edukasi Reels:\n${text}`;
+  const styledPrompt = `Say in a cheerful, enthusiastic, clear Indonesian young man voice explaining fun facts: ${text}`;
   for (let attempt = 1; attempt <= 2; attempt++) {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -269,7 +269,7 @@ async function synthesizeOneWithGeminiTts(apiKey, model, text, outPath, voiceNam
 /** Synthesize all scenes using a single consistent TTS engine/model so voice never changes mid-video. */
 async function synthesizeAllScenes(geminiApiKey, voiceName, scenes, audioDir) {
   if (geminiApiKey) {
-    for (const model of ["gemini-2.5-flash-preview-tts", "gemini-3.8-flash-tts"]) {
+    for (const model of ["gemini-3.8-flash-tts", "gemini-2.5-flash-preview-tts"]) {
       try {
         const durations = [];
         for (let i = 0; i < scenes.length; i++) {
