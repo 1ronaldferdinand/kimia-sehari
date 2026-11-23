@@ -225,16 +225,17 @@
     return { blk, line };
   }
 
-  // Meandering 2-column positions on the 2600x3600 page (supports up to 8 scenes)
+  // Meandering 2-column positions on the 2600x3600 page (supports up to 9 scenes)
   const SLOTS = [
-    { x: 640, y: 760, rot: -1.2, zoom: 1.04 },
-    { x: 1860, y: 800, rot: 1.6, zoom: 1.06 },
-    { x: 700, y: 1520, rot: -1.5, zoom: 1.05 },
-    { x: 1860, y: 1580, rot: 1.8, zoom: 1.12 },
-    { x: 680, y: 2340, rot: -1.8, zoom: 1.06 },
-    { x: 1860, y: 2400, rot: 1.4, zoom: 1.04 },
-    { x: 720, y: 3100, rot: -1.0, zoom: 1.05 },
-    { x: 1840, y: 3120, rot: 0, zoom: 1.08 },
+    { x: 640, y: 740, rot: -1.2, zoom: 1.04 },
+    { x: 1860, y: 780, rot: 1.6, zoom: 1.06 },
+    { x: 680, y: 1420, rot: -1.5, zoom: 1.05 },
+    { x: 1860, y: 1480, rot: 1.8, zoom: 1.12 },
+    { x: 680, y: 2120, rot: -1.8, zoom: 1.06 },
+    { x: 1860, y: 2180, rot: 1.4, zoom: 1.04 },
+    { x: 680, y: 2780, rot: -1.2, zoom: 1.02 },
+    { x: 1860, y: 2820, rot: 1.4, zoom: 1.05 },
+    { x: 1260, y: 3240, rot: 0, zoom: 1.08 },
   ];
 
   function drawCharacter(g, x, y, role, isActive, mood, facing = 1) {

@@ -417,15 +417,16 @@ Gunakan konsep cerita **Kantin Sekolah Mba Ayu** dengan 3 karakter tetap:
 - **Budi** (\`speaker: "budi"\`): Murid laki-laki yang skeptis dan suka meremehkan Kimi.
 - **Mba Ayu** (\`speaker: "mba_ayu"\`): Penjaga kantin sekolah yang ramah dan suka penasaran.
 
-Alur WAJIB (tepat 8 adegan berurutan, total ~50-60 detik, 12-18 kata per adegan):
+Alur WAJIB (8 sampai 9 adegan berurutan, total durasi narasi sekitar **70-85 detik**, yaitu **18-26 kata per adegan** agar dialog Kimi-Budi-Mba Ayu dan penjelasan sainsnya terasa santai, jelas, dan tidak terburu-buru):
 1) \`visual_type: "kantin"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi membuka dengan hook fakta unik/mengejutkan.
 2) \`visual_type: "kantin"\`, \`speaker: "budi"\`, \`mood: "skeptis"\` — Budi meremehkan atau tidak percaya.
 3) \`visual_type: "kantin"\`, \`speaker: "mba_ayu"\`, \`mood: "penasaran"\` — Mba Ayu menengahi dan bertanya penasaran.
 4) \`visual_type: "zoom"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi mulai menjelaskan, zoom mendekat ke objek/zona reaksi.
 5) \`visual_type: "molecule"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi menjelaskan struktur molekul/zat (WAJIB isi \`atoms\`, maks 5 atom).
 6) \`visual_type: "reaction"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi menjelaskan mekanisme reaksi (WAJIB isi \`reactants\` 2 string, \`catalyst\`, \`product\`).
-7) \`visual_type: "kantin"\`, \`speaker: "budi"\`, \`mood: "kaget"\` — Kembali ke kantin sekolah Mba Ayu; Budi dan Mba Ayu terkejut baru sadar!
-8) \`visual_type: "outro_kimi"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi menghadap kamera dan WAJIB diakhiri dengan kalimat persis: Selanjutnya kita bahas apa lagi?
+7) (Opsional) \`visual_type: "summary"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi merangkum manfaat/dampaknya di kehidupan sehari-hari.
+8) \`visual_type: "kantin"\`, \`speaker: "budi"\`, \`mood: "kaget"\` — Kembali ke kantin sekolah Mba Ayu; Budi dan Mba Ayu terkejut baru sadar!
+9) \`visual_type: "outro_kimi"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi menghadap kamera dan WAJIB diakhiri dengan kalimat persis: Selanjutnya kita bahas apa lagi?
 
 Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
 {
