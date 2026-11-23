@@ -155,8 +155,8 @@ async function generateWithAI(env, messages) {
 
   const combinedPrompt = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n");
   const candidates = env.GEMINI_MODEL
-    ? [env.GEMINI_MODEL, "gemini-4-neon", "gemini-4-hydrogen", "gemini-3.8-flash"]
-    : ["gemini-4-neon", "gemini-4-hydrogen", "gemini-3.8-flash"];
+    ? [env.GEMINI_MODEL, "gemini-4-neon", "gemini-4-argon", "gemini-4-hydrogen", "gemini-3.8-flash"]
+    : ["gemini-4-neon", "gemini-4-argon", "gemini-4-hydrogen", "gemini-3.8-flash"];
 
   let lastErr;
   for (const model of [...new Set(candidates)]) {
