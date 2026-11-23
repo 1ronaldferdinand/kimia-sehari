@@ -207,74 +207,98 @@ async function synthesizeWithEdgeTts(text, outPath) {
   return meta.format.duration || 5;
 }
 
-async function synthesizeWithGeminiTts(apiKey, text, outPath, voiceName = "Puck") {
+async function synthesizeOneWithGeminiTts(apiKey, model, text, outPath, voiceName = "Puck") {
   const styledPrompt = `Bacakan naskah edukasi sains berikut dalam Bahasa Indonesia dengan gaya ramah, hangat, antusias, artikulasi jelas, dan tempo pas untuk video edukasi Reels:\n${text}`;
-  for (const model of ["gemini-2.5-flash-preview-tts", "gemini-3.8-flash-tts"]) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: styledPrompt }] }],
-            generationConfig: {
-              responseModalities: ["AUDIO"],
-              speechConfig: {
-                voiceConfig: { prebuiltVoiceConfig: { voiceName } },
-              },
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: styledPrompt }] }],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: { prebuiltVoiceConfig: { voiceName } },
             },
-          }),
-          signal: AbortSignal.timeout(45000),
-        }
-      );
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`${model} (${res.status}): ${errText.slice(0, 140)}`);
+          },
+        }),
+        signal: AbortSignal.timeout(45000),
       }
+    );
 
-      const data = await res.json();
-      const inline = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
-      if (!inline?.data) {
-        throw new Error(`${model} tidak mengembalikan audio.`);
-      }
+    if (res.status === 429 && attempt < 2) {
+      await new Promise((r) => setTimeout(r, 6000));
+      continue;
+    }
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`${model} (${res.status}): ${errText.slice(0, 140)}`);
+    }
 
-      const rawBuf = Buffer.from(inline.data, "base64");
-      const mime = String(inline.mimeType || "").toLowerCase();
-      const tmpIn = `${outPath}.raw`;
-      fs.writeFileSync(tmpIn, rawBuf);
+    const data = await res.json();
+    const inline = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+    if (!inline?.data) {
+      throw new Error(`${model} tidak mengembalikan audio.`);
+    }
 
-      const ffArgs = mime.includes("pcm") || mime.includes("l16")
+    const rawBuf = Buffer.from(inline.data, "base64");
+    const mime = String(inline.mimeType || "").toLowerCase();
+    const tmpIn = `${outPath}.raw`;
+    fs.writeFileSync(tmpIn, rawBuf);
+
+    const ffArgs =
+      mime.includes("pcm") || mime.includes("l16")
         ? ["-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", tmpIn]
         : ["-y", "-i", tmpIn];
-      execFileSync(
-        "ffmpeg",
-        [...ffArgs, "-ar", "24000", "-ac", "1", "-c:a", "libmp3lame", "-b:a", "128k", outPath],
-        { stdio: "pipe" }
-      );
-      fs.rmSync(tmpIn, { force: true });
+    execFileSync(
+      "ffmpeg",
+      [...ffArgs, "-ar", "24000", "-ac", "1", "-c:a", "libmp3lame", "-b:a", "128k", outPath],
+      { stdio: "pipe" }
+    );
+    fs.rmSync(tmpIn, { force: true });
 
-      const mp3Buf = fs.readFileSync(outPath);
-      const meta = await parseBuffer(mp3Buf, "audio/mpeg");
-      return meta.format.duration || 5;
-    } catch (err) {
-      console.warn(`[TTS] Gemini (${model}) gagal (${err.message.slice(0, 120)}), coba fallback...`);
-    }
+    const mp3Buf = fs.readFileSync(outPath);
+    const meta = await parseBuffer(mp3Buf, "audio/mpeg");
+    return meta.format.duration || 5;
   }
-  throw new Error("Semua model Gemini TTS gagal.");
+  throw new Error(`${model} gagal setelah retry.`);
 }
 
-async function synthesizeVoice(geminiApiKey, voiceName, text, outPath) {
+/** Synthesize all scenes using a single consistent TTS engine/model so voice never changes mid-video. */
+async function synthesizeAllScenes(geminiApiKey, voiceName, scenes, audioDir) {
   if (geminiApiKey) {
-    try {
-      return await synthesizeWithGeminiTts(geminiApiKey, text, outPath, voiceName);
-    } catch (err) {
-      console.warn(`[TTS] Fallback ke Edge TTS (id-ID-ArdiNeural): ${err.message}`);
+    for (const model of ["gemini-2.5-flash-preview-tts", "gemini-3.8-flash-tts"]) {
+      try {
+        const durations = [];
+        for (let i = 0; i < scenes.length; i++) {
+          if (i > 0) await new Promise((r) => setTimeout(r, 1200));
+          const absAudio = path.join(audioDir, `scene-${i + 1}.mp3`);
+          const dur = await synthesizeOneWithGeminiTts(
+            geminiApiKey,
+            model,
+            scenes[i].narration,
+            absAudio,
+            voiceName
+          );
+          durations.push(dur);
+        }
+        console.log(`[TTS] Semua ${scenes.length} adegan konsisten memakai ${model} (${voiceName}).`);
+        return durations;
+      } catch (err) {
+        console.warn(`[TTS] ${model} gagal (${err.message.slice(0, 120)}), beralih penuh ke engine berikutnya...`);
+      }
     }
   }
 
-  return synthesizeWithEdgeTts(text, outPath);
+  console.log(`[TTS] Semua ${scenes.length} adegan konsisten memakai Edge TTS (id-ID-ArdiNeural).`);
+  const durations = [];
+  for (let i = 0; i < scenes.length; i++) {
+    const absAudio = path.join(audioDir, `scene-${i + 1}.mp3`);
+    durations.push(await synthesizeWithEdgeTts(scenes[i].narration, absAudio));
+  }
+  return durations;
 }
 
 /** Inject __SCENE_DATA__, top progress bar, and synced subtitle overlay into Bang Motion HTML. */
@@ -410,13 +434,19 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
     ) {
       sc.narration = `${String(sc.narration || "").trim()} Selanjutnya kita bahas apa lagi?`.trim();
     }
+  }
+
+  const durations = await synthesizeAllScenes(
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_TTS_VOICE || "Puck",
+    generated.scenes,
+    audioDir
+  );
+
+  for (let i = 0; i < generated.scenes.length; i++) {
+    const sc = generated.scenes[i];
     const absAudio = path.join(audioDir, `scene-${i + 1}.mp3`);
-    const durSec = await synthesizeVoice(
-      process.env.GEMINI_API_KEY,
-      process.env.GEMINI_TTS_VOICE || "Puck",
-      sc.narration,
-      absAudio
-    );
+    const durSec = durations[i];
     console.log(`  - Scene ${i + 1}: ${durSec.toFixed(2)}s (start ${cursorSec.toFixed(2)}s)`);
     audioPaths.push(absAudio);
     timedScenes.push({
