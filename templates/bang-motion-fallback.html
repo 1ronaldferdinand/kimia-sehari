@@ -3,34 +3,39 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=1080, height=1920" />
-<title>Kimia Sehari — Tablet Sketch Explainer (iPad Sketch)</title>
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet" />
+<title>Kimia Sehari — Kantin 2.5D + iPad Sketch</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Plus+Jakarta+Sans:wght@700;800;900&display=swap" rel="stylesheet" />
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     width: 1080px; height: 1920px; overflow: hidden;
-    background: #F3EADB; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #43362E;
+    background: #F3EADB; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #3B281E;
   }
   #stage {
-    position: relative; width: 1080px; height: 1920px; overflow: hidden;
-    background: #F3EADB;
-  }
-  /* Subtle screen-space corner vignette */
-  #vig {
-    position: absolute; inset: 0; pointer-events: none; z-index: 30;
-    background: radial-gradient(85% 85% at 50% 50%, transparent 62%, rgba(67, 54, 46, 0.10) 100%);
+    position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #F3EADB;
   }
 
-  /* One continuous tablet canvas */
+  /* LAYER 1: 2.5D Studio Cartoon Kantin Mba Ayu */
+  #cartoonLayer {
+    position: absolute; inset: 0; z-index: 10; overflow: hidden;
+    background: linear-gradient(180deg, #FFF7E6 0%, #F7E8CE 55%, #DFC39B 100%);
+  }
+  #kantinSvg { position: absolute; inset: 0; width: 1080px; height: 1920px; transform-origin: 540px 960px; }
+
+  /* LAYER 2: iPad Sketch Explainer Canvas */
+  #sketchLayer {
+    position: absolute; inset: 0; z-index: 15; overflow: hidden;
+    background: #F3EADB; opacity: 0; pointer-events: none;
+  }
   #pageCam {
     position: absolute; left: 0; top: 0; width: 2600px; height: 3600px;
     transform-origin: 0 0; will-change: transform;
   }
-  #paperBg {
-    position: absolute; inset: 0; background: #F3EADB;
-  }
-  #pageSvg {
-    position: absolute; inset: 0; width: 2600px; height: 3600px; overflow: visible;
+  #pageSvg { position: absolute; inset: 0; width: 2600px; height: 3600px; overflow: visible; }
+
+  #vig {
+    position: absolute; inset: 0; pointer-events: none; z-index: 30;
+    background: radial-gradient(88% 88% at 50% 50%, transparent 60%, rgba(43, 27, 18, 0.14) 100%);
   }
 
   /* Screen-space Header HUD */
@@ -40,85 +45,228 @@
     pointer-events: none;
   }
   #h-badge {
-    background: #43362E; color: #F3EADB; padding: 11px 26px; border-radius: 999px;
+    background: #2E6F40; color: #FFFFFF; padding: 12px 28px; border-radius: 999px;
     font-size: 22px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
-    white-space: nowrap;
+    white-space: nowrap; box-shadow: 0 8px 20px rgba(46, 111, 64, 0.25);
   }
   #h-title {
-    font-family: 'Caveat', cursive; font-size: 36px; font-weight: 700; color: #43362E;
-    text-align: right; max-width: 480px; line-height: 1.1;
+    font-size: 26px; font-weight: 900; color: #3B281E;
+    text-align: right; max-width: 480px; line-height: 1.2;
+    background: rgba(255, 255, 255, 0.78); padding: 10px 20px; border-radius: 18px;
   }
 
-  /* Handwritten callout notes pinned cleanly below visual zone */
+  /* Callouts */
   #callouts {
     position: absolute; bottom: 295px; left: 56px; right: 56px; z-index: 25;
     display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; pointer-events: none;
   }
   .note-pill {
-    background: rgba(243, 234, 219, 0.94); color: #43362E;
-    border: 2.5px solid #43362E; border-radius: 16px;
-    padding: 10px 24px; font-family: 'Caveat', cursive; font-size: 34px; font-weight: 700;
-    box-shadow: 5px 5px 0 rgba(241, 192, 79, 0.75);
+    background: rgba(255, 255, 255, 0.94); color: #3B281E;
+    border: 2.5px solid #3B281E; border-radius: 18px;
+    padding: 12px 26px; font-size: 25px; font-weight: 800;
+    box-shadow: 5px 5px 0 rgba(241, 192, 79, 0.85);
   }
 
-  /* Stylus (no hand) */
+  /* Stylus for iPad Sketch scenes */
   #stylus {
     position: absolute; left: 0; top: 0; z-index: 28; pointer-events: none;
-    width: 180px; height: 28px; transform-origin: 0 14px;
-    opacity: 0;
+    width: 180px; height: 28px; transform-origin: 0 14px; opacity: 0;
   }
 
   /* Frame 0 Cover Thumbnail */
   #cover {
     position: absolute; inset: 0; z-index: 40;
-    background: #F3EADB;
+    background: linear-gradient(165deg, #FAF8F3 0%, #F3EADB 62%, #E8DCC7 100%);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     padding: 96px 76px; text-align: center;
   }
   #cover .c-badge {
-    border: 3px solid #43362E; color: #43362E; padding: 12px 34px; border-radius: 999px;
+    border: 3px solid #3B281E; color: #3B281E; padding: 12px 34px; border-radius: 999px;
     font-size: 26px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
-    background: #F1C04F; box-shadow: 6px 6px 0 rgba(67, 54, 46, 0.18);
+    background: #F1C04F; box-shadow: 6px 6px 0 rgba(59, 40, 30, 0.18);
   }
   #cover .c-title {
-    margin-top: 40px; font-family: 'Caveat', cursive; font-size: 92px; font-weight: 700;
-    line-height: 1.08; color: #43362E; max-width: 920px; position: relative;
+    margin-top: 40px; font-size: 74px; font-weight: 900;
+    line-height: 1.12; color: #3B281E; max-width: 920px;
   }
   #cover .c-line {
-    margin-top: 22px; width: 340px; height: 8px; border-radius: 999px; background: #DC6A4C;
+    margin-top: 24px; width: 320px; height: 8px; border-radius: 999px; background: #DC6A4C;
   }
   #cover .c-sub {
-    margin-top: 28px; font-size: 26px; font-weight: 700; color: #7C6B5D; letter-spacing: 0.04em;
+    margin-top: 26px; font-size: 28px; font-weight: 800; color: #2E6F40;
   }
 </style>
 </head>
 <body>
 <div id="stage">
-  <div id="pageCam">
-    <div id="paperBg"></div>
-    <svg id="pageSvg" viewBox="0 0 2600 3600" width="2600" height="3600">
+  <!-- 2.5D STUDIO CARTOON KANTIN LAYER -->
+  <div id="cartoonLayer">
+    <svg id="kantinSvg" viewBox="0 0 1080 1920" width="1080" height="1920">
       <defs>
-        <filter id="paperGrain" x="0%" y="0%" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" result="noise"/>
-          <feColorMatrix type="matrix" values="0 0 0 0 0.26  0 0 0 0 0.21  0 0 0 0 0.18  0 0 0 0.055 0"/>
-        </filter>
-        <filter id="pencilTooth" x="-5%" y="-5%" width="110%" height="110%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" result="n"/>
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/>
-        </filter>
-        <filter id="chalkEdge" x="-8%" y="-8%" width="116%" height="116%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" result="n"/>
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G"/>
+        <linearGradient id="wallGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#FFF9EC"/>
+          <stop offset="100%" stop-color="#F2DFBE"/>
+        </linearGradient>
+        <radialGradient id="lampGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#FDE68A" stop-opacity="0.75"/>
+          <stop offset="100%" stop-color="#FDE68A" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="woodGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#A1623B"/>
+          <stop offset="100%" stop-color="#6E3F22"/>
+        </linearGradient>
+        <linearGradient id="skinGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#FFE0C8"/>
+          <stop offset="100%" stop-color="#F3BE9A"/>
+        </linearGradient>
+        <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#2B1B12" flood-opacity="0.18"/>
         </filter>
       </defs>
-      <rect width="2600" height="3600" fill="#F3EADB"/>
-      <rect width="2600" height="3600" filter="url(#paperGrain)"/>
-      <g id="constructionLayer" opacity="0.48"></g>
-      <g id="worldLayer"></g>
+
+      <!-- Wall & Window -->
+      <rect width="1080" height="1920" fill="url(#wallGrad)"/>
+      <rect x="80" y="340" width="920" height="580" rx="28" fill="#D7EEFA" stroke="#5C3A21" stroke-width="10"/>
+      <line x1="540" y1="340" x2="540" y2="920" stroke="#5C3A21" stroke-width="8"/>
+
+      <!-- Striped Green-Cream Awning -->
+      <g filter="url(#dropShadow)">
+        <rect x="0" y="190" width="1080" height="110" fill="#2E6F40" stroke="#2B1B12" stroke-width="6"/>
+        <rect x="120" y="190" width="120" height="110" fill="#FAF8F3"/>
+        <rect x="360" y="190" width="120" height="110" fill="#FAF8F3"/>
+        <rect x="600" y="190" width="120" height="110" fill="#FAF8F3"/>
+        <rect x="840" y="190" width="120" height="110" fill="#FAF8F3"/>
+      </g>
+
+      <!-- 3 Hanging Warm Lamps -->
+      <g id="lamps">
+        <circle cx="240" cy="400" r="140" fill="url(#lampGlow)"/>
+        <line x1="240" y1="300" x2="240" y2="370" stroke="#2B1B12" stroke-width="5"/>
+        <path d="M200 370 Q240 340 280 370 Z" fill="#D97706" stroke="#2B1B12" stroke-width="5"/>
+        <circle cx="540" cy="400" r="160" fill="url(#lampGlow)"/>
+        <line x1="540" y1="300" x2="540" y2="370" stroke="#2B1B12" stroke-width="5"/>
+        <path d="M500 370 Q540 340 580 370 Z" fill="#D97706" stroke="#2B1B12" stroke-width="5"/>
+        <circle cx="840" cy="400" r="140" fill="url(#lampGlow)"/>
+        <line x1="840" y1="300" x2="840" y2="370" stroke="#2B1B12" stroke-width="5"/>
+        <path d="M800 370 Q840 340 880 370 Z" fill="#D97706" stroke="#2B1B12" stroke-width="5"/>
+      </g>
+
+      <!-- Spanduk KANTIN MBA AYU -->
+      <g filter="url(#dropShadow)">
+        <rect x="260" y="325" width="560" height="74" rx="18" fill="#2E6F40" stroke="#2B1B12" stroke-width="6"/>
+        <text x="540" y="373" text-anchor="middle" fill="#FAF8F3" font-size="34" font-weight="900" letter-spacing="2">KANTIN MBA AYU</text>
+      </g>
+
+      <!-- Mba Ayu (Center behind counter) -->
+      <g id="char-mba_ayu" transform="translate(540, 860)" filter="url(#dropShadow)">
+        <g class="char-breath">
+          <!-- Body & Apron -->
+          <path d="M-95 220 C-95 80, 95 80, 95 220 Z" fill="#0D9488" stroke="#2B1B12" stroke-width="7"/>
+          <path d="M-65 110 L65 110 L75 220 L-75 220 Z" fill="#FAF8F3" stroke="#2B1B12" stroke-width="5"/>
+          <!-- Head -->
+          <g id="ayu-head">
+            <circle cx="0" cy="0" r="88" fill="url(#skinGrad)" stroke="#2B1B12" stroke-width="7"/>
+            <path d="M-88 -12 C-85 -105, 85 -105, 88 -12 C60 -45, -60 -45, -88 -12 Z" fill="#2B1B12"/>
+            <rect x="-78" y="-56" width="156" height="22" rx="10" fill="#F1C04F" stroke="#2B1B12" stroke-width="5"/>
+            <g class="eyes">
+              <circle cx="-26" cy="4" r="9" fill="#2B1B12"/>
+              <circle cx="26" cy="4" r="9" fill="#2B1B12"/>
+              <circle cx="-23" cy="1" r="3" fill="#FFFFFF"/>
+              <circle cx="29" cy="1" r="3" fill="#FFFFFF"/>
+            </g>
+            <path id="ayu-mouth" d="M-18 38 Q0 54 18 38" fill="none" stroke="#2B1B12" stroke-width="6" stroke-linecap="round"/>
+          </g>
+        </g>
+        <text id="ayu-shock" x="98" y="-75" fill="#DC2626" font-size="64" font-weight="900" opacity="0">?!</text>
+      </g>
+
+      <!-- Counter Table & Props (Kerupuk jar, Thermos, Gorengan, 2 Cups) -->
+      <g filter="url(#dropShadow)">
+        <rect x="60" y="1060" width="960" height="44" rx="14" fill="url(#woodGrad)" stroke="#2B1B12" stroke-width="7"/>
+        <rect x="90" y="1104" width="900" height="320" fill="#8C5230" stroke="#2B1B12" stroke-width="7"/>
+        <!-- Toples Kerupuk -->
+        <rect x="130" y="950" width="90" height="110" rx="16" fill="rgba(255,255,255,0.75)" stroke="#2B1B12" stroke-width="5"/>
+        <rect x="125" y="936" width="100" height="20" rx="8" fill="#DC2626" stroke="#2B1B12" stroke-width="5"/>
+        <!-- Termos -->
+        <rect x="850" y="925" width="76" height="135" rx="14" fill="#0284C7" stroke="#2B1B12" stroke-width="5"/>
+        <!-- Piring Gorengan -->
+        <ellipse cx="540" cy="1052" rx="95" ry="18" fill="#FAF8F3" stroke="#2B1B12" stroke-width="5"/>
+        <circle cx="515" cy="1040" r="18" fill="#D97706" stroke="#2B1B12" stroke-width="4"/>
+        <circle cx="555" cy="1038" r="18" fill="#F59E0B" stroke="#2B1B12" stroke-width="4"/>
+        <!-- 2 Gelas -->
+        <rect x="370" y="996" width="44" height="64" rx="8" fill="#FEF3C7" stroke="#2B1B12" stroke-width="5"/>
+        <rect x="666" y="996" width="44" height="64" rx="8" fill="#FEF3C7" stroke="#2B1B12" stroke-width="5"/>
+      </g>
+
+      <!-- Kimi (Left, Cheerful SD Girl) -->
+      <g id="char-kimi" transform="translate(260, 1230)" filter="url(#dropShadow)">
+        <g class="char-breath">
+          <path d="M-95 250 C-95 85, 95 85, 95 250 Z" fill="#FAF8F3" stroke="#2B1B12" stroke-width="7"/>
+          <polygon points="0,115 -22,195 0,215 22,195" fill="#DC2626" stroke="#2B1B12" stroke-width="5"/>
+          <circle cx="0" cy="0" r="94" fill="url(#skinGrad)" stroke="#2B1B12" stroke-width="7"/>
+          <!-- Hair + Ponytail -->
+          <circle cx="-98" cy="-42" r="36" fill="#2B1B12"/>
+          <circle cx="-78" cy="-48" r="14" fill="#DC6A4C" stroke="#2B1B12" stroke-width="4"/>
+          <path d="M-94 -12 C-90 -114, 90 -114, 94 -12 C56 -48, -56 -48, -94 -12 Z" fill="#2B1B12"/>
+          <g class="eyes">
+            <circle cx="-26" cy="4" r="10" fill="#2B1B12"/>
+            <circle cx="28" cy="4" r="10" fill="#2B1B12"/>
+            <circle cx="-23" cy="0" r="3.5" fill="#FFFFFF"/>
+            <circle cx="31" cy="0" r="3.5" fill="#FFFFFF"/>
+          </g>
+          <path d="M-22 38 Q0 62 22 38" fill="none" stroke="#2B1B12" stroke-width="6" stroke-linecap="round"/>
+        </g>
+      </g>
+
+      <!-- Budi (Right, Skeptical / Shocked SD Boy) -->
+      <g id="char-budi" transform="translate(820, 1230)" filter="url(#dropShadow)">
+        <g class="char-breath">
+          <path d="M-95 250 C-95 85, 95 85, 95 250 Z" fill="#DC2626" stroke="#2B1B12" stroke-width="7"/>
+          <circle cx="0" cy="0" r="94" fill="url(#skinGrad)" stroke="#2B1B12" stroke-width="7"/>
+          <!-- Spiky Hair -->
+          <path d="M-92 -20 L-76 -84 L-32 -66 L0 -106 L34 -68 L78 -86 L92 -20 C52 -46, -52 -46, -92 -20 Z" fill="#2B1B12"/>
+          <g class="eyes">
+            <circle cx="-28" cy="4" r="10" fill="#2B1B12"/>
+            <circle cx="26" cy="4" r="10" fill="#2B1B12"/>
+            <circle cx="-25" cy="0" r="3.5" fill="#FFFFFF"/>
+            <circle cx="29" cy="0" r="3.5" fill="#FFFFFF"/>
+          </g>
+          <path id="budi-mouth" d="M-22 42 L22 34" fill="none" stroke="#2B1B12" stroke-width="6" stroke-linecap="round"/>
+          <!-- Sweat drop & ?! for shock -->
+          <path id="budi-sweat" d="M78 -42 Q94 -20 78 -6 Q62 -20 78 -42 Z" fill="#38BDF8" stroke="#2B1B12" stroke-width="3" opacity="0"/>
+        </g>
+        <text id="budi-shock" x="-110" y="-85" fill="#DC2626" font-size="68" font-weight="900" opacity="0">?!</text>
+      </g>
     </svg>
   </div>
 
-  <!-- Clean Apple-Pencil-style Stylus (no hand) -->
+  <!-- IPAD SKETCH EXPLAINER LAYER -->
+  <div id="sketchLayer">
+    <div id="pageCam">
+      <svg id="pageSvg" viewBox="0 0 2600 3600" width="2600" height="3600">
+        <defs>
+          <filter id="paperGrain" x="0%" y="0%" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" result="noise"/>
+            <feColorMatrix type="matrix" values="0 0 0 0 0.26  0 0 0 0 0.21  0 0 0 0 0.18  0 0 0 0.055 0"/>
+          </filter>
+          <filter id="pencilTooth" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" result="n"/>
+            <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/>
+          </filter>
+          <filter id="chalkEdge" x="-8%" y="-8%" width="116%" height="116%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" result="n"/>
+            <feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G"/>
+          </filter>
+        </defs>
+        <rect width="2600" height="3600" fill="#F3EADB"/>
+        <rect width="2600" height="3600" filter="url(#paperGrain)"/>
+        <g id="constructionLayer" opacity="0.48"></g>
+        <g id="worldLayer"></g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Clean Stylus (no hand) -->
   <svg id="stylus" viewBox="0 0 180 28" width="180" height="28">
     <polygon points="0,14 22,7 22,21" fill="#F3EADB" stroke="#43362E" stroke-width="2"/>
     <polygon points="0,14 8,11.5 8,16.5" fill="#43362E"/>
@@ -127,7 +275,7 @@
   </svg>
 
   <div id="header">
-    <div id="h-badge">Kimia Sehari</div>
+    <div id="h-badge">Kimi • Kantin</div>
     <div id="h-title">Kimia Sehari</div>
   </div>
   <div id="callouts"></div>
@@ -135,10 +283,10 @@
 
   <!-- Cover Thumbnail (Frame 0) -->
   <div id="cover">
-    <div class="c-badge">Kimia Sehari &bull; Sketch</div>
+    <div class="c-badge">Kimia Sehari &bull; Kantin Mba Ayu</div>
     <div class="c-title" id="coverTitle">Keajaiban Kimia di Sekitar Kita</div>
     <div class="c-line"></div>
-    <div class="c-sub">Tablet Sketch Explainer</div>
+    <div class="c-sub">Kimi, Budi &amp; Mba Ayu</div>
   </div>
 </div>
 
@@ -157,7 +305,7 @@
     topik: "Keajaiban Kimia di Sekitar Kita",
     totalDuration: 30,
     scenes: [
-      { badge: "Fakta Alam", headline: "Fenomena Nyata", visual_type: "hook", start: 0.45, duration: 5, callouts: ["FENOMENA", "REAKSI"] }
+      { badge: "Kimi • Fakta Unik", speaker: "kimi", mood: "ceria", visual_type: "kantin", headline: "Fenomena Nyata", start: 0.45, duration: 5, callouts: ["FAKTA UNIK"] }
     ]
   };
 
@@ -185,16 +333,12 @@
     return t;
   }
 
-  // Off-register colour block + graphite line helper (Line first, colour second)
   function addSketchCircle(cx, cy, r, fill, g, label = "") {
-    // 1. Light construction guide
     el("circle", { cx, cy, r: r + 10, fill: "none", stroke: LIGHT_GRAPH, "stroke-width": 1.8, "stroke-dasharray": "8 8" }, construct);
-    // 2. Off-register chalk colour block (+8, +8) underneath graphite
     const blk = el("circle", {
       class: "sk-block", cx: cx + 8, cy: cy + 8, r,
       fill, opacity: 0, filter: "url(#chalkEdge)", style: "mix-blend-mode:multiply"
     }, g);
-    // 3. Graphite outline drawn first
     const circLen = Math.ceil(2 * Math.PI * r);
     const line = el("circle", {
       class: "sk-line", cx, cy, r, fill: "none",
@@ -225,116 +369,95 @@
     return { blk, line };
   }
 
-  // Meandering 2-column positions on the 2600x3600 page (supports up to 9 scenes)
-  const SLOTS = [
-    { x: 640, y: 740, rot: -1.2, zoom: 1.04 },
-    { x: 1860, y: 780, rot: 1.6, zoom: 1.06 },
-    { x: 680, y: 1420, rot: -1.5, zoom: 1.05 },
-    { x: 1860, y: 1480, rot: 1.8, zoom: 1.12 },
-    { x: 680, y: 2120, rot: -1.8, zoom: 1.06 },
-    { x: 1860, y: 2180, rot: 1.4, zoom: 1.04 },
-    { x: 680, y: 2780, rot: -1.2, zoom: 1.02 },
-    { x: 1860, y: 2820, rot: 1.4, zoom: 1.05 },
-    { x: 1260, y: 3240, rot: 0, zoom: 1.08 },
+  const SKETCH_SLOTS = [
+    { x: 680, y: 820, rot: -1.4, zoom: 1.05 },
+    { x: 1860, y: 880, rot: 1.8, zoom: 1.08 },
+    { x: 700, y: 1760, rot: -1.6, zoom: 1.04 },
+    { x: 1860, y: 1820, rot: 1.2, zoom: 1.02 },
+    { x: 1260, y: 2680, rot: 0, zoom: 1.0 },
   ];
-
-  function drawCharacter(g, x, y, role, isActive, mood, facing = 1) {
-    const cg = el("g", { transform: `translate(${x}, ${y})` }, g);
-    if (isActive) {
-      el("circle", { class: "sk-block", cx: 0, cy: -10, r: 108, fill: MUSTARD, opacity: 0, filter: "url(#chalkEdge)" }, cg);
-    }
-    const shirtColor = role === "kimi" ? SUBJECT_COLORS[3] : role === "budi" ? SUBJECT_COLORS[1] : SUBJECT_COLORS[0];
-    // Torso
-    addSketchRect(-48, 22, 96, 100, 22, shirtColor, cg);
-    // Head
-    addSketchCircle(0, -40, 52, "#FBE5D6", cg);
-
-    // Hair / Headband
-    if (role === "kimi") {
-      el("path", { class: "sk-line", d: "M -48 -52 Q 0 -106 48 -52", fill: "none", stroke: GRAPHITE, "stroke-width": 6, "stroke-linecap": "round", "stroke-dasharray": 160, "stroke-dashoffset": 160 }, cg);
-      addSketchCircle(-56 * facing, -56, 20, CORAL, cg);
-    } else if (role === "budi") {
-      el("path", { class: "sk-line", d: "M -44 -58 L -26 -96 L 0 -76 L 26 -96 L 44 -58", fill: "none", stroke: GRAPHITE, "stroke-width": 6, "stroke-linecap": "round", "stroke-dasharray": 180, "stroke-dashoffset": 180 }, cg);
-    } else {
-      el("path", { class: "sk-line", d: "M -50 -48 Q 0 -100 50 -48", fill: "none", stroke: GRAPHITE, "stroke-width": 7, "stroke-linecap": "round", "stroke-dasharray": 160, "stroke-dashoffset": 160 }, cg);
-      el("line", { class: "sk-line", x1: -44, y1: -66, x2: 44, y2: -66, stroke: MUSTARD, "stroke-width": 8, "stroke-linecap": "round", "stroke-dasharray": 100, "stroke-dashoffset": 100 }, cg);
-    }
-
-    // Eyes & Mouth
-    const eyeR = mood === "kaget" ? 7 : 4.5;
-    el("circle", { class: "sk-text", cx: -16 + facing * 4, cy: -44, r: eyeR, fill: GRAPHITE }, cg);
-    el("circle", { class: "sk-text", cx: 16 + facing * 4, cy: -44, r: eyeR, fill: GRAPHITE }, cg);
-
-    if (mood === "kaget") {
-      el("circle", { class: "sk-text", cx: facing * 4, cy: -16, r: 10, fill: CORAL }, cg);
-      addHandText("?!", 62, -78, 44, CORAL, "middle", cg).classList.add("sk-text");
-    } else if (mood === "skeptis") {
-      el("line", { class: "sk-text", x1: -14, y1: -16, x2: 16, y2: -22, stroke: GRAPHITE, "stroke-width": 4, "stroke-linecap": "round" }, cg);
-    } else {
-      el("path", { class: "sk-text", d: "M -14 -20 Q 0 -4 14 -20", fill: "none", stroke: GRAPHITE, "stroke-width": 4, "stroke-linecap": "round" }, cg);
-    }
-
-    // Name tag
-    const label = role === "kimi" ? "Kimi" : role === "budi" ? "Budi" : "Mba Ayu";
-    addHandText(label, 0, 158, 34, isActive ? CORAL : GRAPHITE, "middle", cg).classList.add("sk-text");
-  }
-
-  function drawKantinScene(g, sc) {
-    // Awning & Kantin Counter
-    addSketchRect(-330, -230, 660, 72, 16, MUSTARD, g, "KANTIN MBA AYU");
-    el("line", { class: "sk-line", x1: -340, y1: 120, x2: 340, y2: 120, stroke: GRAPHITE, "stroke-width": 5, "stroke-linecap": "round", "stroke-dasharray": 700, "stroke-dashoffset": 700 }, g);
-    // Snack jar prop
-    addSketchRect(255, 45, 56, 72, 10, SUBJECT_COLORS[1], g);
-
-    const spk = sc.speaker || "kimi";
-    const mood = sc.mood || "ceria";
-    const ayuFacing = spk === "budi" ? 1 : -1;
-    drawCharacter(g, 0, -28, "mba_ayu", spk === "mba_ayu", spk === "mba_ayu" ? mood : (mood === "kaget" ? "kaget" : "ceria"), ayuFacing);
-    drawCharacter(g, -210, 12, "kimi", spk === "kimi", spk === "kimi" ? mood : "ceria", 1);
-    drawCharacter(g, 210, 12, "budi", spk === "budi", spk === "budi" ? mood : (mood === "kaget" ? "kaget" : "skeptis"), -1);
-  }
-
-  function drawOutroKimi(g) {
-    drawCharacter(g, 0, -35, "kimi", true, "ceria", 1);
-    addHandText("Selanjutnya kita", 0, 195, 46, GRAPHITE, "middle", g).classList.add("sk-text");
-    addHandText("bahas apa lagi?", 0, 248, 52, CORAL, "middle", g).classList.add("sk-text");
-  }
 
   const tl = gsap.timeline({ paused: true });
   const dur = Number(data.totalDuration) || 30;
 
-  // Frame 0 Cover Thumbnail -> reveal page
+  // Frame 0 Cover Thumbnail -> reveal 2.5D Cartoon Kantin
   tl.to("#cover", { opacity: 0, scale: 1.05, duration: 0.45, ease: "power3.inOut" }, 0.35);
   tl.set("#cover", { display: "none" }, 0.8);
 
+  // Continuous character breathing & eye blinks across the entire timeline
+  tl.to(".char-breath", { y: -8, duration: 1.4, yoyo: true, repeat: Math.ceil(dur / 1.4), ease: "sine.inOut" }, 0);
+  for (let bt = 2.5; bt < dur; bt += 3.6) {
+    tl.to(".eyes", { scaleY: 0.1, transformOrigin: "center", duration: 0.08, yoyo: true, repeat: 1 }, bt);
+  }
+
+  let sketchIdx = 0;
   const scenes = data.scenes || [];
+
   scenes.forEach((sc, idx) => {
-    const slot = SLOTS[idx % SLOTS.length];
     const t0 = Number(sc.start) || 0.45;
     const sd = Math.max(1.5, Number(sc.duration) || 4);
+    const vtype = sc.visual_type || "kantin";
+    const isCartoon = vtype === "kantin" || vtype === "outro_kimi";
+
+    tl.call(() => {
+      badgeEl.textContent = `${idx + 1}/${scenes.length} • ${sc.badge || "Kimia Sehari"}`;
+      calloutsEl.innerHTML = "";
+      (sc.callouts || []).slice(0, 3).forEach((txt) => {
+        const d = document.createElement("div");
+        d.className = "note-pill";
+        d.textContent = txt;
+        calloutsEl.appendChild(d);
+      });
+      gsap.fromTo("#callouts .note-pill", { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, stagger: 0.08, ease: "power2.out" });
+    }, null, t0);
+
+    if (isCartoon) {
+      // Show 2.5D Cartoon Kantin layer
+      tl.to("#sketchLayer", { opacity: 0, duration: 0.35, ease: "power2.inOut" }, t0);
+      tl.to("#stylus", { opacity: 0, duration: 0.2 }, t0);
+
+      if (vtype === "outro_kimi") {
+        // Zoom in close-up on Kimi facing camera
+        tl.to("#kantinSvg", { scale: 1.65, x: 420, y: -260, duration: 0.8, ease: "power3.inOut" }, t0);
+        tl.to("#char-kimi", { scale: 1.08, transformOrigin: "center", duration: 0.5 }, t0);
+        tl.to(["#char-budi", "#char-mba_ayu"], { opacity: 0.25, duration: 0.4 }, t0);
+      } else {
+        tl.to("#kantinSvg", { scale: 1, x: 0, y: 0, duration: 0.7, ease: "power3.inOut" }, t0);
+        tl.to(["#char-budi", "#char-mba_ayu", "#char-kimi"], { opacity: 1, duration: 0.3 }, t0);
+
+        const spk = sc.speaker || "kimi";
+        const isShock = sc.mood === "kaget";
+        // Mba Ayu facing (-1 toward Kimi, +1 toward Budi)
+        tl.to("#ayu-head", { x: spk === "budi" ? 10 : -10, rotation: spk === "budi" ? 4 : -4, transformOrigin: "center", duration: 0.4 }, t0);
+        // Highlight active speaker
+        tl.to("#char-kimi", { scale: spk === "kimi" ? 1.07 : 0.97, transformOrigin: "center", duration: 0.4 }, t0);
+        tl.to("#char-budi", { scale: spk === "budi" || isShock ? 1.07 : 0.97, transformOrigin: "center", duration: 0.4 }, t0);
+        tl.to("#char-mba_ayu", { scale: spk === "mba_ayu" ? 1.07 : 0.97, transformOrigin: "center", duration: 0.4 }, t0);
+
+        tl.to(["#budi-shock", "#ayu-shock", "#budi-sweat"], { opacity: isShock ? 1 : 0, duration: 0.25 }, t0 + 0.1);
+      }
+      return;
+    }
+
+    // iPad Sketch Explainer Scene
+    const slot = SKETCH_SLOTS[sketchIdx % SKETCH_SLOTS.length];
+    sketchIdx += 1;
     const g = el("g", { id: `sc-${idx}`, transform: `translate(${slot.x}, ${slot.y})` }, world);
 
-    // Light dotted connector path between sketches on the same page
-    if (idx > 0) {
-      const prev = SLOTS[(idx - 1) % SLOTS.length];
+    if (sketchIdx > 1) {
+      const prev = SKETCH_SLOTS[(sketchIdx - 2) % SKETCH_SLOTS.length];
       el("path", {
         d: `M ${prev.x} ${prev.y + 180} Q ${(prev.x + slot.x) / 2} ${(prev.y + slot.y) / 2 - 80} ${slot.x} ${slot.y - 210}`,
         fill: "none", stroke: LIGHT_GRAPH, "stroke-width": 2.5, "stroke-dasharray": "10 10"
       }, construct);
     }
 
-    // Mustard highlight block + handwritten headline above each sketch
     const headTxt = String(sc.headline || data.judul_pendek || "Kimia Sehari").slice(0, 28);
     el("rect", { class: "sk-block", x: -210, y: -338, width: 420, height: 42, rx: 10, fill: MUSTARD, opacity: 0, filter: "url(#chalkEdge)" }, g);
     addHandText(headTxt, 0, -304, 52, GRAPHITE, "middle", g).classList.add("sk-text");
     el("line", { class: "sk-line", x1: -160, y1: -286, x2: 160, y2: -286, stroke: CORAL, "stroke-width": 5, "stroke-linecap": "round", "stroke-dasharray": 320, "stroke-dashoffset": 320 }, g);
 
-    const vtype = sc.visual_type || "hook";
-    if (vtype === "kantin") {
-      drawKantinScene(g, sc);
-    } else if (vtype === "outro_kimi") {
-      drawOutroKimi(g);
-    } else if (vtype === "molecule") {
+    if (vtype === "molecule") {
       const atoms = (sc.atoms && sc.atoms.length ? sc.atoms : ["C", "H", "O", "H"]).slice(0, 5);
       const rOrbit = 165;
       const satCoords = atoms.slice(1).map((_, i) => {
@@ -374,37 +497,22 @@
       addSketchCircle(-170, 110, 40, CORAL, g);
     }
 
-    // Two-finger tablet camera pan + pinch-zoom + gentle tilt to this sketch
+    // Bring up iPad Sketch layer and pan/pinch/rotate canvas
+    tl.to("#sketchLayer", { opacity: 1, duration: 0.4, ease: "power2.inOut" }, t0);
     const camX = 540 - slot.x * slot.zoom;
     const camY = 900 - slot.y * slot.zoom;
     tl.to("#pageCam", {
       x: camX, y: camY, scale: slot.zoom, rotation: slot.rot,
-      duration: idx === 0 ? 0.45 : 0.85, ease: "power3.inOut"
+      duration: sketchIdx === 1 ? 0.35 : 0.85, ease: "power3.inOut"
     }, t0);
 
-    // Update screen-space badge & callouts
-    tl.call(() => {
-      badgeEl.textContent = `${idx + 1}/${scenes.length} • ${sc.badge || "Kimia Sehari"}`;
-      calloutsEl.innerHTML = "";
-      (sc.callouts || []).slice(0, 3).forEach((txt) => {
-        const d = document.createElement("div");
-        d.className = "note-pill";
-        d.textContent = txt;
-        calloutsEl.appendChild(d);
-      });
-      gsap.fromTo("#callouts .note-pill", { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, stagger: 0.08, ease: "power2.out" });
-    }, null, t0);
-
-    // Line first, colour second + stylus riding the sketch
     const lines = g.querySelectorAll(".sk-line");
     const blocks = g.querySelectorAll(".sk-block");
     const texts = g.querySelectorAll(".sk-text");
-
     tl.to(lines, { strokeDashoffset: 0, duration: Math.min(1.1, sd * 0.3), stagger: 0.08, ease: "power2.out" }, t0 + 0.15);
     tl.fromTo(texts, { opacity: 0, scale: 0.92, transformOrigin: "center" }, { opacity: 1, scale: 1, duration: 0.35, stagger: 0.06, ease: "power2.out" }, t0 + 0.3);
     tl.to(blocks, { opacity: 0.72, duration: Math.min(0.9, sd * 0.25), stagger: 0.08, ease: "power1.out" }, t0 + 0.45);
 
-    // Stylus glides near the active sketch center and lifts off
     tl.fromTo("#stylus", { x: 640, y: 1120, rotation: -28, opacity: 0 }, { x: 540, y: 920, rotation: -34, opacity: 1, duration: 0.45, ease: "power2.out" }, t0 + 0.12);
     tl.to("#stylus", { x: 620, y: 980, rotation: -24, duration: Math.max(0.6, sd * 0.25), ease: "sine.inOut" }, t0 + 0.58);
     tl.to("#stylus", { opacity: 0, y: 1140, duration: 0.3, ease: "power2.in" }, t0 + Math.max(1.2, sd * 0.55));
