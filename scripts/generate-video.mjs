@@ -159,7 +159,7 @@ async function callGroq(apiKey, model, promptText) {
   return data.choices?.[0]?.message?.content || "";
 }
 
-async function generateWithAI(env, messages) {
+async function generateWithAI(env, messages, preferProvider = "gemini") {
   const {
     ANTHROPIC_API_KEY,
     ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929",
@@ -167,19 +167,11 @@ async function generateWithAI(env, messages) {
     GEMINI_API_KEY,
   } = env;
 
-  if (ANTHROPIC_API_KEY) {
-    try {
-      return await callClaude(ANTHROPIC_API_KEY, ANTHROPIC_MODEL, messages);
-    } catch (err) {
-      if (!GROQ_API_KEY && !GEMINI_API_KEY) throw err;
-      console.warn(`[AI] Claude gagal (${err.message.slice(0, 120)}), mencoba provider berikutnya...`);
-    }
-  }
-
   const combinedPrompt = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n");
 
-  if (GROQ_API_KEY) {
-    for (const groqModel of [env.GROQ_MODEL || "llama-3.3-70b-versatile", "qwen/qwen3-32b"]) {
+  const tryGroq = async () => {
+    if (!GROQ_API_KEY) return null;
+    for (const groqModel of [env.GROQ_MODEL || "openai/gpt-oss-120b", "qwen/qwen3.8-27b"]) {
       try {
         console.log(`[AI] Menggunakan Groq (${groqModel})...`);
         return await callGroq(GROQ_API_KEY, groqModel, combinedPrompt);
@@ -187,36 +179,64 @@ async function generateWithAI(env, messages) {
         console.warn(`[AI] Groq (${groqModel}) gagal (${err.message.slice(0, 120)}), mencoba berikutnya...`);
       }
     }
-  }
+    return null;
+  };
 
-  if (!GEMINI_API_KEY) {
-    throw new Error("ANTHROPIC_API_KEY, GROQ_API_KEY, atau GEMINI_API_KEY belum disetel.");
-  }
+  const tryGemini = async () => {
+    if (!GEMINI_API_KEY) return null;
+    const candidates = env.GEMINI_MODEL
+      ? [env.GEMINI_MODEL, "gemini-4-neon", "gemini-4-argon", "gemini-4-hydrogen", "gemini-3.8-flash", "gemini-2.5-flash", "gemini-flash-latest"]
+      : ["gemini-4-neon", "gemini-4-argon", "gemini-4-hydrogen", "gemini-3.8-flash", "gemini-2.5-flash", "gemini-flash-latest"];
 
-  const candidates = env.GEMINI_MODEL
-    ? [env.GEMINI_MODEL, "gemini-4-neon", "gemini-4-argon", "gemini-4-hydrogen", "gemini-3.8-flash", "gemini-2.5-flash", "gemini-flash-latest"]
-    : ["gemini-4-neon", "gemini-4-argon", "gemini-4-hydrogen", "gemini-3.8-flash", "gemini-2.5-flash", "gemini-flash-latest"];
-
-  let lastErr;
-  for (const model of [...new Set(candidates)]) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        return await callGemini(GEMINI_API_KEY, model, combinedPrompt);
-      } catch (err) {
-        lastErr = err;
-        if (err.name !== "TimeoutError" && !/\((404|429|503)\)/.test(err.message)) {
-          throw err;
+    let lastErr;
+    for (const model of [...new Set(candidates)]) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          console.log(`[AI] Menggunakan Gemini (${model})...`);
+          return await callGemini(GEMINI_API_KEY, model, combinedPrompt);
+        } catch (err) {
+          lastErr = err;
+          if (err.name !== "TimeoutError" && !/\((404|429|503)\)/.test(err.message)) {
+            throw err;
+          }
+          if (attempt < 2 && /\((429|503)\)/.test(err.message)) {
+            console.warn(`[AI] ${model} sibuk (percobaan ${attempt}), menunggu 5 detik...`);
+            await new Promise((r) => setTimeout(r, 5000));
+            continue;
+          }
+          console.warn(`[AI] ${model} sibuk/tidak tersedia, mencoba model berikutnya...`);
         }
-        if (attempt < 2 && /\((429|503)\)/.test(err.message)) {
-          console.warn(`[AI] ${model} sibuk (percobaan ${attempt}), menunggu 5 detik...`);
-          await new Promise((r) => setTimeout(r, 5000));
-          continue;
-        }
-        console.warn(`[AI] ${model} sibuk/tidak tersedia, mencoba model berikutnya...`);
       }
     }
+    throw lastErr;
+  };
+
+  if (preferProvider === "groq") {
+    const g = await tryGroq();
+    if (g) return g;
   }
-  throw lastErr;
+
+  if (ANTHROPIC_API_KEY && preferProvider === "anthropic") {
+    try {
+      return await callClaude(ANTHROPIC_API_KEY, ANTHROPIC_MODEL, messages);
+    } catch (err) {
+      console.warn(`[AI] Claude gagal (${err.message.slice(0, 120)}), mencoba provider berikutnya...`);
+    }
+  }
+
+  const gem = await tryGemini().catch((err) => {
+    if (GROQ_API_KEY) {
+      console.warn(`[AI] Gemini gagal (${err.message.slice(0, 120)}), fallback ke Groq...`);
+      return null;
+    }
+    throw err;
+  });
+  if (gem) return gem;
+
+  const grq = await tryGroq();
+  if (grq) return grq;
+
+  throw new Error("Semua provider AI (Gemini / Groq / Anthropic) gagal.");
 }
 
 function extractJson(raw) {
@@ -247,21 +267,67 @@ async function synthesizeWithEdgeTts(text, outPath, voice = "id-ID-ArdiNeural") 
 
 const SPEAKER_CONFIG = {
   kimi: {
+    groqVoice: "autumn",
     voiceName: "Zephyr",
-    style: "cheerful, enthusiastic, clear Indonesian elementary school girl explaining fun facts",
-    edgeVoice: "id-ID-GadisNeural",
+    style: "cheerful, enthusiastic, clear young girl explaining fun science facts",
+    edgeVoice: "en-US-JennyNeural",
   },
   budi: {
+    groqVoice: "troy",
     voiceName: "Fenrir",
-    style: "casual, skeptical, teasing Indonesian schoolboy",
-    edgeVoice: "id-ID-ArdiNeural",
+    style: "casual, skeptical, teasing schoolboy",
+    edgeVoice: "en-US-GuyNeural",
   },
   mba_ayu: {
+    groqVoice: "hannah",
     voiceName: "Kore",
-    style: "warm, friendly, curious Indonesian canteen lady",
-    edgeVoice: "id-ID-GadisNeural",
+    style: "warm, friendly, curious canteen lady",
+    edgeVoice: "en-US-AriaNeural",
   },
 };
+
+async function synthesizeWithGroqOrpheus(apiKey, voice, text, outPath) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const res = await fetch("https://api.groq.com/openai/v1/audio/speech", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "canopylabs/orpheus-v1-english",
+        input: text,
+        voice,
+        response_format: "wav",
+      }),
+      signal: AbortSignal.timeout(45000),
+    });
+
+    if (res.status === 429 && attempt < 2) {
+      await new Promise((r) => setTimeout(r, 5000));
+      continue;
+    }
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Groq TTS (${res.status}): ${errText.slice(0, 160)}`);
+    }
+
+    const rawBuf = Buffer.from(await res.arrayBuffer());
+    const tmpWav = `${outPath}.wav`;
+    fs.writeFileSync(tmpWav, rawBuf);
+    execFileSync(
+      "ffmpeg",
+      ["-y", "-i", tmpWav, "-ar", "24000", "-ac", "1", "-c:a", "libmp3lame", "-b:a", "128k", outPath],
+      { stdio: "pipe" }
+    );
+    fs.rmSync(tmpWav, { force: true });
+
+    const mp3Buf = fs.readFileSync(outPath);
+    const meta = await parseBuffer(mp3Buf, "audio/mpeg");
+    return meta.format.duration || 5;
+  }
+  throw new Error("Groq TTS gagal setelah retry.");
+}
 
 async function synthesizeOneWithGeminiTts(apiKey, model, text, outPath, voiceName = "Zephyr", style = "cheerful, enthusiastic, clear Indonesian young speaker") {
   const styledPrompt = `Say in a ${style}: ${text}`;
@@ -323,8 +389,27 @@ async function synthesizeOneWithGeminiTts(apiKey, model, text, outPath, voiceNam
 }
 
 /** Synthesize all scenes using a single consistent TTS engine so character voices stay consistent. */
-async function synthesizeAllScenes(geminiApiKey, scenes, audioDir) {
-  if (geminiApiKey) {
+async function synthesizeAllScenes(env, scenes, audioDir) {
+  if (env.GROQ_API_KEY) {
+    try {
+      const durations = [];
+      for (let i = 0; i < scenes.length; i++) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 600));
+        const sc = scenes[i];
+        const cfg = SPEAKER_CONFIG[sc.speaker] || SPEAKER_CONFIG.kimi;
+        const absAudio = path.join(audioDir, `scene-${i + 1}.mp3`);
+        durations.push(
+          await synthesizeWithGroqOrpheus(env.GROQ_API_KEY, cfg.groqVoice, sc.narration, absAudio)
+        );
+      }
+      console.log(`[TTS] Semua ${scenes.length} adegan memakai Groq Orpheus (Kimi: autumn, Budi: troy, Mba Ayu: hannah).`);
+      return durations;
+    } catch (err) {
+      console.warn(`[TTS] Groq Orpheus gagal (${err.message.slice(0, 140)}), beralih ke Gemini TTS...`);
+    }
+  }
+
+  if (env.GEMINI_API_KEY) {
     for (const model of ["gemini-3.8-flash-tts", "gemini-2.5-flash-preview-tts"]) {
       try {
         const durations = [];
@@ -334,11 +419,11 @@ async function synthesizeAllScenes(geminiApiKey, scenes, audioDir) {
           const cfg = SPEAKER_CONFIG[sc.speaker] || SPEAKER_CONFIG.kimi;
           const style =
             sc.speaker === "budi" && sc.mood === "kaget"
-              ? "amazed, surprised, shocked Indonesian schoolboy"
+              ? "amazed, surprised, shocked schoolboy"
               : cfg.style;
           const absAudio = path.join(audioDir, `scene-${i + 1}.mp3`);
           const dur = await synthesizeOneWithGeminiTts(
-            geminiApiKey,
+            env.GEMINI_API_KEY,
             model,
             sc.narration,
             absAudio,
@@ -387,12 +472,13 @@ function injectSceneDataAndOverlay(html, sceneData) {
     const pct = Math.min(100, Math.max(0, (t / Math.max(1, d.totalDuration)) * 100));
     if (fill) fill.style.width = pct.toFixed(2) + "%";
     const sc = (d.scenes || []).find((s) => t >= s.start && t < s.start + s.duration);
-    if (!sc || !sc.narration) {
+    const subText = sc ? (sc.subtitle_id || sc.narration) : "";
+    if (!sc || !subText) {
       if (subWrap) subWrap.style.opacity = "0";
       return;
     }
     if (subWrap) subWrap.style.opacity = "1";
-    const words = sc.narration.trim().split(/\\s+/).filter(Boolean);
+    const words = subText.trim().split(/\\s+/).filter(Boolean);
     const chunks = [];
     for (let i = 0; i < words.length; i += 4) chunks.push(words.slice(i, i + 4));
     const localProgress = Math.min(0.999, Math.max(0, (t - sc.start) / Math.max(0.1, sc.duration)));
@@ -455,7 +541,12 @@ Gunakan konsep cerita **Kantin Sekolah Mba Ayu** dengan 3 karakter tetap:
 - **Budi** (\`speaker: "budi"\`): Murid laki-laki yang skeptis dan suka meremehkan Kimi.
 - **Mba Ayu** (\`speaker: "mba_ayu"\`): Penjaga kantin sekolah yang ramah dan suka penasaran.
 
-Alur WAJIB (8 sampai 9 adegan berurutan, total durasi narasi sekitar **70-85 detik**, yaitu **18-26 kata per adegan** agar dialog Kimi-Budi-Mba Ayu dan penjelasan sainsnya terasa santai, jelas, dan tidak terburu-buru):
+Alur WAJIB (8 sampai 9 adegan berurutan, total durasi narasi sekitar **70-85 detik**, **18-25 kata per adegan**):
+- \`narration\`: WAJIB berbahasa **INGGRIS** yang natural, ekspresif, dan seru untuk TTS Bahasa Inggris (adegan terakhir WAJIB diakhiri kalimat persis: \`What should we talk about next?\`).
+- \`subtitle_id\`: Terjemahan **BAHASA INDONESIA** yang santai & akurat dari \`narration\` adegan tersebut (adegan terakhir WAJIB diakhiri kalimat: \`Selanjutnya kita bahas apa lagi?\`) untuk subtitle di layar.
+- \`topik\`, \`judul_pendek\`, \`headline\`, \`callouts\`, \`caption\`: Gunakan **BAHASA INDONESIA**.
+
+Urutan adegan:
 1) \`visual_type: "kantin"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi membuka dengan hook fakta unik/mengejutkan.
 2) \`visual_type: "kantin"\`, \`speaker: "budi"\`, \`mood: "skeptis"\` — Budi meremehkan atau tidak percaya.
 3) \`visual_type: "kantin"\`, \`speaker: "mba_ayu"\`, \`mood: "penasaran"\` — Mba Ayu menengahi dan bertanya penasaran.
@@ -464,26 +555,26 @@ Alur WAJIB (8 sampai 9 adegan berurutan, total durasi narasi sekitar **70-85 det
 6) \`visual_type: "reaction"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi menjelaskan mekanisme reaksi (WAJIB isi \`reactants\` 2 string, \`catalyst\`, \`product\`).
 7) (Opsional) \`visual_type: "summary"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi merangkum manfaat/dampaknya di kehidupan sehari-hari.
 8) \`visual_type: "kantin"\`, \`speaker: "budi"\`, \`mood: "kaget"\` — Kembali ke kantin sekolah Mba Ayu; Budi dan Mba Ayu terkejut baru sadar!
-9) \`visual_type: "outro_kimi"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi menghadap kamera dan WAJIB diakhiri dengan kalimat persis: Selanjutnya kita bahas apa lagi?
+9) \`visual_type: "outro_kimi"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi menghadap kamera (\`narration\` diakhiri \`What should we talk about next?\`, \`subtitle_id\` diakhiri \`Selanjutnya kita bahas apa lagi?\`).
 
 Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
 {
-  "topik": "Judul lengkap konten",
-  "judul_pendek": "Judul singkat maks 6 kata (untuk Thumbnail Cover)",
-  "caption": "Caption Instagram & TikTok lengkap dengan hashtag",
+  "topik": "Judul lengkap konten (Indonesia)",
+  "judul_pendek": "Judul singkat maks 6 kata (Indonesia, untuk Thumbnail Cover)",
+  "caption": "Caption Instagram & TikTok lengkap dengan hashtag (Indonesia)",
   "scenes": [
-    { "id": 1, "badge": "Kimi • Fakta Unik", "speaker": "kimi", "mood": "ceria", "visual_type": "kantin", "headline": "3-5 kata hook", "narration": "...", "callouts": ["FAKTA UNIK", "KIMIA ALAM"] },
-    { "id": 2, "badge": "Budi • Skeptis", "speaker": "budi", "mood": "skeptis", "visual_type": "kantin", "headline": "3-5 kata", "narration": "...", "callouts": ["MASA SIH?", "NGGAK PERCAYA"] },
-    { "id": 3, "badge": "Mba Ayu • Penasaran", "speaker": "mba_ayu", "mood": "penasaran", "visual_type": "kantin", "headline": "3-5 kata", "narration": "...", "callouts": ["EMANG BENER?", "JELASIN DONG"] },
-    { "id": 4, "badge": "Kimi • Zoom Dekat", "speaker": "kimi", "mood": "ceria", "visual_type": "zoom", "headline": "3-5 kata", "narration": "...", "callouts": ["ZONA REAKSI", "MIKRO"] },
-    { "id": 5, "badge": "Kimi • Molekul", "speaker": "kimi", "mood": "ceria", "visual_type": "molecule", "headline": "3-5 kata", "narration": "...", "atoms": ["ATOM 1", "ATOM 2", "ATOM 3", "ATOM 4"], "callouts": ["STRUKTUR", "IKATAN"] },
-    { "id": 6, "badge": "Kimi • Reaksi", "speaker": "kimi", "mood": "ceria", "visual_type": "reaction", "headline": "3-5 kata", "narration": "...", "reactants": ["Zat A", "Zat B"], "catalyst": "Proses", "product": "Hasil", "callouts": ["MEKANISME", "HASIL"] },
-    { "id": 7, "badge": "Kantin • Kaget!", "speaker": "budi", "mood": "kaget", "visual_type": "kantin", "headline": "3-5 kata", "narration": "...", "callouts": ["BARU SADAR!", "KEREN BANGET"] },
-    { "id": 8, "badge": "Kimi • Penutup", "speaker": "kimi", "mood": "ceria", "visual_type": "outro_kimi", "headline": "Bahas Apa Lagi?", "narration": "... Selanjutnya kita bahas apa lagi?", "callouts": ["TULIS DI KOMEN", "KIMIA SEHARI"] }
+    { "id": 1, "badge": "Kimi • Fakta Unik", "speaker": "kimi", "mood": "ceria", "visual_type": "kantin", "headline": "3-5 kata", "narration": "English 18-25 words...", "subtitle_id": "Terjemahan Indonesia...", "callouts": ["FAKTA UNIK", "KIMIA ALAM"] },
+    { "id": 2, "badge": "Budi • Skeptis", "speaker": "budi", "mood": "skeptis", "visual_type": "kantin", "headline": "3-5 kata", "narration": "English...", "subtitle_id": "Indonesia...", "callouts": ["MASA SIH?", "NGGAK PERCAYA"] },
+    { "id": 3, "badge": "Mba Ayu • Penasaran", "speaker": "mba_ayu", "mood": "penasaran", "visual_type": "kantin", "headline": "3-5 kata", "narration": "English...", "subtitle_id": "Indonesia...", "callouts": ["EMANG BENER?", "JELASIN DONG"] },
+    { "id": 4, "badge": "Kimi • Zoom Dekat", "speaker": "kimi", "mood": "ceria", "visual_type": "zoom", "headline": "3-5 kata", "narration": "English...", "subtitle_id": "Indonesia...", "callouts": ["ZONA REAKSI", "MIKRO"] },
+    { "id": 5, "badge": "Kimi • Molekul", "speaker": "kimi", "mood": "ceria", "visual_type": "molecule", "headline": "3-5 kata", "narration": "English...", "subtitle_id": "Indonesia...", "atoms": ["ATOM 1", "ATOM 2", "ATOM 3", "ATOM 4"], "callouts": ["STRUKTUR", "IKATAN"] },
+    { "id": 6, "badge": "Kimi • Reaksi", "speaker": "kimi", "mood": "ceria", "visual_type": "reaction", "headline": "3-5 kata", "narration": "English...", "subtitle_id": "Indonesia...", "reactants": ["Zat A", "Zat B"], "catalyst": "Proses", "product": "Hasil", "callouts": ["MEKANISME", "HASIL"] },
+    { "id": 7, "badge": "Kantin • Kaget!", "speaker": "budi", "mood": "kaget", "visual_type": "kantin", "headline": "3-5 kata", "narration": "English...", "subtitle_id": "Indonesia...", "callouts": ["BARU SADAR!", "KEREN BANGET"] },
+    { "id": 8, "badge": "Kimi • Penutup", "speaker": "kimi", "mood": "ceria", "visual_type": "outro_kimi", "headline": "Bahas Apa Lagi?", "narration": "English... What should we talk about next?", "subtitle_id": "Indonesia... Selanjutnya kita bahas apa lagi?", "callouts": ["TULIS DI KOMEN", "KIMIA SEHARI"] }
   ]
 }`;
 
-  console.log(`[1/4] Meminta naskah & struktur visual Bang Motion ke AI...`);
+  console.log(`[1/4] Meminta naskah English + subtitle Indonesia ke Gemini...`);
   let generated;
   for (let aiAttempt = 1; aiAttempt <= 2; aiAttempt++) {
     const raw = await generateWithAI(process.env, [
@@ -499,6 +590,29 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
     }
   }
 
+  // Optional Groq visual refinement pass for crisp chemistry diagrams & labels
+  if (process.env.GROQ_API_KEY) {
+    try {
+      const visPrompt = `Rapikan & perkuat data visual kimia (Bahasa Indonesia singkat) untuk adegan berikut agar diagram molekul & reaksi sangat akurat dan ringkas (headline maks 4 kata, atoms maks 5 simbol kimia singkat, reactants 2 item singkat, callouts maks 2-3 label singkat <= 3 kata). Kembalikan JSON murni: { "scenes": [...] } dengan panjang array sama (${generated.scenes.length}).\nInput:\n${JSON.stringify(generated.scenes.map(({ id, visual_type, headline, atoms, reactants, catalyst, product, callouts, subtitle_id }) => ({ id, visual_type, headline, atoms, reactants, catalyst, product, callouts, subtitle_id })))}`;
+      const visRaw = await generateWithAI(process.env, [{ role: "user", content: visPrompt }], "groq");
+      const visJson = extractJson(visRaw);
+      if (Array.isArray(visJson?.scenes) && visJson.scenes.length === generated.scenes.length) {
+        generated.scenes = generated.scenes.map((sc, idx) => ({
+          ...sc,
+          headline: visJson.scenes[idx].headline || sc.headline,
+          atoms: visJson.scenes[idx].atoms || sc.atoms,
+          reactants: visJson.scenes[idx].reactants || sc.reactants,
+          catalyst: visJson.scenes[idx].catalyst || sc.catalyst,
+          product: visJson.scenes[idx].product || sc.product,
+          callouts: visJson.scenes[idx].callouts || sc.callouts,
+        }));
+        console.log("[Visual] Struktur visual dirapikan oleh Groq.");
+      }
+    } catch (err) {
+      console.warn(`[Visual] Groq visual polish dilewati (${err.message.slice(0, 80)}).`);
+    }
+  }
+
   const outDir = path.resolve("out");
   const audioDir = path.join(outDir, "audio");
   fs.mkdirSync(audioDir, { recursive: true });
@@ -511,16 +625,18 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
 
   for (let i = 0; i < generated.scenes.length; i++) {
     const sc = generated.scenes[i];
-    if (
-      i === generated.scenes.length - 1 &&
-      !/selanjutnya kita bahas apa lagi/i.test(sc.narration || "")
-    ) {
-      sc.narration = `${String(sc.narration || "").trim()} Selanjutnya kita bahas apa lagi?`.trim();
+    if (i === generated.scenes.length - 1) {
+      if (!/what should we talk about next/i.test(sc.narration || "")) {
+        sc.narration = `${String(sc.narration || "").trim()} What should we talk about next?`.trim();
+      }
+      if (!/selanjutnya kita bahas apa lagi/i.test(sc.subtitle_id || "")) {
+        sc.subtitle_id = `${String(sc.subtitle_id || "").trim()} Selanjutnya kita bahas apa lagi?`.trim();
+      }
     }
   }
 
   const durations = await synthesizeAllScenes(
-    process.env.GEMINI_API_KEY,
+    process.env,
     generated.scenes,
     audioDir
   );
@@ -543,6 +659,7 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
       catalyst: sc.catalyst || "",
       product: sc.product || "",
       narration: sc.narration,
+      subtitle_id: sc.subtitle_id || sc.narration,
       callouts: sc.callouts || [],
       start: Number(cursorSec.toFixed(3)),
       duration: Number(durSec.toFixed(3)),
