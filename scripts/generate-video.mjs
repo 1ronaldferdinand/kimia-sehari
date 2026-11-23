@@ -189,10 +189,10 @@ function extractJson(raw) {
   return JSON.parse(cleaned);
 }
 
-async function synthesizeWithEdgeTts(text, outPath) {
+async function synthesizeWithEdgeTts(text, outPath, voice = "id-ID-ArdiNeural") {
   const tts = new MsEdgeTTS();
   await tts.setMetadata(
-    "id-ID-ArdiNeural",
+    voice,
     OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3
   );
   const { audioStream } = tts.toStream(text);
@@ -207,8 +207,26 @@ async function synthesizeWithEdgeTts(text, outPath) {
   return meta.format.duration || 5;
 }
 
-async function synthesizeOneWithGeminiTts(apiKey, model, text, outPath, voiceName = "Puck") {
-  const styledPrompt = `Say in a cheerful, enthusiastic, clear Indonesian young man voice explaining fun facts: ${text}`;
+const SPEAKER_CONFIG = {
+  kimi: {
+    voiceName: "Zephyr",
+    style: "cheerful, enthusiastic, clear Indonesian elementary school girl explaining fun facts",
+    edgeVoice: "id-ID-GadisNeural",
+  },
+  budi: {
+    voiceName: "Fenrir",
+    style: "casual, skeptical, teasing Indonesian schoolboy",
+    edgeVoice: "id-ID-ArdiNeural",
+  },
+  mba_ayu: {
+    voiceName: "Kore",
+    style: "warm, friendly, curious Indonesian canteen lady",
+    edgeVoice: "id-ID-GadisNeural",
+  },
+};
+
+async function synthesizeOneWithGeminiTts(apiKey, model, text, outPath, voiceName = "Zephyr", style = "cheerful, enthusiastic, clear Indonesian young speaker") {
+  const styledPrompt = `Say in a ${style}: ${text}`;
   for (let attempt = 1; attempt <= 2; attempt++) {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -229,7 +247,7 @@ async function synthesizeOneWithGeminiTts(apiKey, model, text, outPath, voiceNam
     );
 
     if (res.status === 429 && attempt < 2) {
-      await new Promise((r) => setTimeout(r, 6000));
+      await new Promise((r) => setTimeout(r, 10000));
       continue;
     }
     if (!res.ok) {
@@ -266,25 +284,32 @@ async function synthesizeOneWithGeminiTts(apiKey, model, text, outPath, voiceNam
   throw new Error(`${model} gagal setelah retry.`);
 }
 
-/** Synthesize all scenes using a single consistent TTS engine/model so voice never changes mid-video. */
-async function synthesizeAllScenes(geminiApiKey, voiceName, scenes, audioDir) {
+/** Synthesize all scenes using a single consistent TTS engine so character voices stay consistent. */
+async function synthesizeAllScenes(geminiApiKey, scenes, audioDir) {
   if (geminiApiKey) {
     for (const model of ["gemini-3.8-flash-tts", "gemini-2.5-flash-preview-tts"]) {
       try {
         const durations = [];
         for (let i = 0; i < scenes.length; i++) {
-          if (i > 0) await new Promise((r) => setTimeout(r, 1200));
+          if (i > 0) await new Promise((r) => setTimeout(r, 2000));
+          const sc = scenes[i];
+          const cfg = SPEAKER_CONFIG[sc.speaker] || SPEAKER_CONFIG.kimi;
+          const style =
+            sc.speaker === "budi" && sc.mood === "kaget"
+              ? "amazed, surprised, shocked Indonesian schoolboy"
+              : cfg.style;
           const absAudio = path.join(audioDir, `scene-${i + 1}.mp3`);
           const dur = await synthesizeOneWithGeminiTts(
             geminiApiKey,
             model,
-            scenes[i].narration,
+            sc.narration,
             absAudio,
-            voiceName
+            cfg.voiceName,
+            style
           );
           durations.push(dur);
         }
-        console.log(`[TTS] Semua ${scenes.length} adegan konsisten memakai ${model} (${voiceName}).`);
+        console.log(`[TTS] Semua ${scenes.length} adegan memakai ${model} (Kimi: Zephyr, Budi: Fenrir, Mba Ayu: Kore).`);
         return durations;
       } catch (err) {
         console.warn(`[TTS] ${model} gagal (${err.message.slice(0, 120)}), beralih penuh ke engine berikutnya...`);
@@ -292,11 +317,13 @@ async function synthesizeAllScenes(geminiApiKey, voiceName, scenes, audioDir) {
     }
   }
 
-  console.log(`[TTS] Semua ${scenes.length} adegan konsisten memakai Edge TTS (id-ID-ArdiNeural).`);
+  console.log(`[TTS] Semua ${scenes.length} adegan memakai Edge TTS fallback.`);
   const durations = [];
   for (let i = 0; i < scenes.length; i++) {
+    const sc = scenes[i];
+    const cfg = SPEAKER_CONFIG[sc.speaker] || SPEAKER_CONFIG.kimi;
     const absAudio = path.join(audioDir, `scene-${i + 1}.mp3`);
-    durations.push(await synthesizeWithEdgeTts(scenes[i].narration, absAudio));
+    durations.push(await synthesizeWithEdgeTts(sc.narration, absAudio, cfg.edgeVoice));
   }
   return durations;
 }
@@ -385,28 +412,35 @@ async function main() {
 
   const prompt = `Tanggal edisi: ${dateStr}.
 Buatkan satu topik riset kimia sehari-hari di alam dengan fokus tema "${category}" dari sudut pandang "${angle}".${exclusionLine}
-Gunakan gaya bahasa "Kimia Sehari": ramah, santai, edukatif.
-Total durasi narasi suara harus sekitar 50-65 detik (sekitar 125-150 kata total), dibagi ke **6 sampai 7 adegan** berurutan (15-22 kata per adegan).
+Gunakan konsep cerita **Kantin Sekolah Mba Ayu** dengan 3 karakter tetap:
+- **Kimi** (\`speaker: "kimi"\`): Murid SD perempuan yang ceria, antusias soal kimia & alam.
+- **Budi** (\`speaker: "budi"\`): Murid laki-laki yang skeptis dan suka meremehkan Kimi.
+- **Mba Ayu** (\`speaker: "mba_ayu"\`): Penjaga kantin sekolah yang ramah dan suka penasaran.
 
-Sistem visual kita memakai **Bang Motion Engine** yang merender tiap adegan secara presisi & konsisten. Pilih \`visual_type\` yang paling tepat untuk tiap adegan:
-- \`"hook"\`: Adegan pembuka fenomena nyata (isi \`callouts\` dengan 2 kata kunci).
-- \`"zoom"\`: Transisi zoom mendekat ke zona reaksi (isi \`callouts\` dengan 2 label singkat).
-- \`"molecule"\`: Struktur molekul simetris (WAJIB isi \`atoms\`, contoh: \`["C", "H", "O", "H"]\` atau \`["Fe", "O₂", "H₂O"]\`, maksimal 5 atom).
-- \`"reaction"\`: Diagram mekanisme reaksi A + B -> C (WAJIB isi \`reactants\` array 2 string, \`catalyst\` string singkat, dan \`product\` string singkat).
-- \`"summary"\`: Kartu ringkasan 3 poin (isi \`callouts\` dengan 3 poin singkat maks 4 kata per poin; adegan terakhir WAJIB diakhiri kalimat: Selanjutnya kita bahas apa lagi?).
+Alur WAJIB (tepat 8 adegan berurutan, total ~50-60 detik, 12-18 kata per adegan):
+1) \`visual_type: "kantin"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi membuka dengan hook fakta unik/mengejutkan.
+2) \`visual_type: "kantin"\`, \`speaker: "budi"\`, \`mood: "skeptis"\` — Budi meremehkan atau tidak percaya.
+3) \`visual_type: "kantin"\`, \`speaker: "mba_ayu"\`, \`mood: "penasaran"\` — Mba Ayu menengahi dan bertanya penasaran.
+4) \`visual_type: "zoom"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi mulai menjelaskan, zoom mendekat ke objek/zona reaksi.
+5) \`visual_type: "molecule"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi menjelaskan struktur molekul/zat (WAJIB isi \`atoms\`, maks 5 atom).
+6) \`visual_type: "reaction"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi menjelaskan mekanisme reaksi (WAJIB isi \`reactants\` 2 string, \`catalyst\`, \`product\`).
+7) \`visual_type: "kantin"\`, \`speaker: "budi"\`, \`mood: "kaget"\` — Kembali ke kantin sekolah Mba Ayu; Budi dan Mba Ayu terkejut baru sadar!
+8) \`visual_type: "outro_kimi"\`, \`speaker: "kimi"\`, \`mood: "ceria"\` — Kimi menghadap kamera dan WAJIB diakhiri dengan kalimat persis: Selanjutnya kita bahas apa lagi?
 
 Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
 {
   "topik": "Judul lengkap konten",
-  "judul_pendek": "Judul singkat maks 6 kata (dipakai di Thumbnail Cover)",
+  "judul_pendek": "Judul singkat maks 6 kata (untuk Thumbnail Cover)",
   "caption": "Caption Instagram & TikTok lengkap dengan hashtag",
   "scenes": [
-    { "id": 1, "badge": "Fakta Alam", "visual_type": "hook", "headline": "3-5 kata singkat", "narration": "15-22 kata hook penasaran...", "callouts": ["LABEL 1", "LABEL 2"] },
-    { "id": 2, "badge": "Mengamati Dekat", "visual_type": "zoom", "headline": "3-5 kata singkat", "narration": "15-22 kata...", "callouts": ["ZONA REAKSI", "PERMUKAAN"] },
-    { "id": 3, "badge": "Level Molekul", "visual_type": "molecule", "headline": "3-5 kata singkat", "narration": "15-22 kata...", "atoms": ["ATOM PUSAT", "ATOM 1", "ATOM 2", "ATOM 3"], "callouts": ["IKATAN KIMIA", "STABILITAS"] },
-    { "id": 4, "badge": "Mekanisme Reaksi", "visual_type": "reaction", "headline": "3-5 kata singkat", "narration": "15-22 kata...", "reactants": ["Zat A", "Zat B"], "catalyst": "Enzim/Suhu", "product": "Hasil Reaksi", "callouts": ["REAKSI ALAMI", "HASIL BARU"] },
-    { "id": 5, "badge": "Dampak Nyata", "visual_type": "reaction", "headline": "3-5 kata singkat", "narration": "15-22 kata...", "reactants": ["Hasil Awal", "Lingkungan"], "catalyst": "Proses Lanjut", "product": "Efek Terlihat", "callouts": ["PERUBAHAN", "MANFAAT"] },
-    { "id": 6, "badge": "Ringkasan", "visual_type": "summary", "headline": "3-5 kata singkat", "narration": "15-22 kata dan WAJIB diakhiri kalimat persis: Selanjutnya kita bahas apa lagi?", "callouts": ["Poin 1 singkat", "Poin 2 singkat", "Poin 3 singkat"] }
+    { "id": 1, "badge": "Kimi • Fakta Unik", "speaker": "kimi", "mood": "ceria", "visual_type": "kantin", "headline": "3-5 kata hook", "narration": "...", "callouts": ["FAKTA UNIK", "KIMIA ALAM"] },
+    { "id": 2, "badge": "Budi • Skeptis", "speaker": "budi", "mood": "skeptis", "visual_type": "kantin", "headline": "3-5 kata", "narration": "...", "callouts": ["MASA SIH?", "NGGAK PERCAYA"] },
+    { "id": 3, "badge": "Mba Ayu • Penasaran", "speaker": "mba_ayu", "mood": "penasaran", "visual_type": "kantin", "headline": "3-5 kata", "narration": "...", "callouts": ["EMANG BENER?", "JELASIN DONG"] },
+    { "id": 4, "badge": "Kimi • Zoom Dekat", "speaker": "kimi", "mood": "ceria", "visual_type": "zoom", "headline": "3-5 kata", "narration": "...", "callouts": ["ZONA REAKSI", "MIKRO"] },
+    { "id": 5, "badge": "Kimi • Molekul", "speaker": "kimi", "mood": "ceria", "visual_type": "molecule", "headline": "3-5 kata", "narration": "...", "atoms": ["ATOM 1", "ATOM 2", "ATOM 3", "ATOM 4"], "callouts": ["STRUKTUR", "IKATAN"] },
+    { "id": 6, "badge": "Kimi • Reaksi", "speaker": "kimi", "mood": "ceria", "visual_type": "reaction", "headline": "3-5 kata", "narration": "...", "reactants": ["Zat A", "Zat B"], "catalyst": "Proses", "product": "Hasil", "callouts": ["MEKANISME", "HASIL"] },
+    { "id": 7, "badge": "Kantin • Kaget!", "speaker": "budi", "mood": "kaget", "visual_type": "kantin", "headline": "3-5 kata", "narration": "...", "callouts": ["BARU SADAR!", "KEREN BANGET"] },
+    { "id": 8, "badge": "Kimi • Penutup", "speaker": "kimi", "mood": "ceria", "visual_type": "outro_kimi", "headline": "Bahas Apa Lagi?", "narration": "... Selanjutnya kita bahas apa lagi?", "callouts": ["TULIS DI KOMEN", "KIMIA SEHARI"] }
   ]
 }`;
 
@@ -438,7 +472,6 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
 
   const durations = await synthesizeAllScenes(
     process.env.GEMINI_API_KEY,
-    process.env.GEMINI_TTS_VOICE || "Puck",
     generated.scenes,
     audioDir
   );
@@ -452,6 +485,8 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
     timedScenes.push({
       id: sc.id || i + 1,
       badge: sc.badge || "Kimia Sehari",
+      speaker: sc.speaker || "kimi",
+      mood: sc.mood || "ceria",
       visual_type: sc.visual_type || "hook",
       headline: sc.headline || generated.judul_pendek,
       atoms: sc.atoms || [],
