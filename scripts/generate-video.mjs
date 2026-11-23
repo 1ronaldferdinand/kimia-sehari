@@ -135,10 +135,35 @@ async function callGemini(apiKey, model, promptText) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 }
 
+async function callGroq(apiKey, model, promptText) {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: promptText }],
+      response_format: { type: "json_object" },
+      temperature: 0.7,
+      max_tokens: 4096,
+    }),
+    signal: AbortSignal.timeout(60000),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Groq API gagal (${res.status}): ${errText}`);
+  }
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || "";
+}
+
 async function generateWithAI(env, messages) {
   const {
     ANTHROPIC_API_KEY,
     ANTHROPIC_MODEL = "claude-sonnet-4-5-20250929",
+    GROQ_API_KEY,
     GEMINI_API_KEY,
   } = env;
 
@@ -146,16 +171,28 @@ async function generateWithAI(env, messages) {
     try {
       return await callClaude(ANTHROPIC_API_KEY, ANTHROPIC_MODEL, messages);
     } catch (err) {
-      if (!GEMINI_API_KEY) throw err;
-      console.warn(`[AI] Claude gagal (${err.message.slice(0, 120)}), fallback ke Gemini...`);
+      if (!GROQ_API_KEY && !GEMINI_API_KEY) throw err;
+      console.warn(`[AI] Claude gagal (${err.message.slice(0, 120)}), mencoba provider berikutnya...`);
+    }
+  }
+
+  const combinedPrompt = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n");
+
+  if (GROQ_API_KEY) {
+    for (const groqModel of [env.GROQ_MODEL || "llama-3.3-70b-versatile", "qwen/qwen3-32b"]) {
+      try {
+        console.log(`[AI] Menggunakan Groq (${groqModel})...`);
+        return await callGroq(GROQ_API_KEY, groqModel, combinedPrompt);
+      } catch (err) {
+        console.warn(`[AI] Groq (${groqModel}) gagal (${err.message.slice(0, 120)}), mencoba berikutnya...`);
+      }
     }
   }
 
   if (!GEMINI_API_KEY) {
-    throw new Error("ANTHROPIC_API_KEY atau GEMINI_API_KEY belum disetel.");
+    throw new Error("ANTHROPIC_API_KEY, GROQ_API_KEY, atau GEMINI_API_KEY belum disetel.");
   }
 
-  const combinedPrompt = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n");
   const candidates = env.GEMINI_MODEL
     ? [env.GEMINI_MODEL, "gemini-4-neon", "gemini-4-argon", "gemini-4-hydrogen", "gemini-3.8-flash", "gemini-2.5-flash", "gemini-flash-latest"]
     : ["gemini-4-neon", "gemini-4-argon", "gemini-4-hydrogen", "gemini-3.8-flash", "gemini-2.5-flash", "gemini-flash-latest"];
@@ -397,8 +434,8 @@ async function main() {
     UPSTASH_REDIS_REST_TOKEN,
   } = process.env;
 
-  if (!ANTHROPIC_API_KEY && !process.env.GEMINI_API_KEY) {
-    throw new Error("ANTHROPIC_API_KEY atau GEMINI_API_KEY belum disetel.");
+  if (!ANTHROPIC_API_KEY && !process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY, GROQ_API_KEY, atau GEMINI_API_KEY belum disetel.");
   }
 
   const { dateStr, category, angle } = getDailyFocus();
