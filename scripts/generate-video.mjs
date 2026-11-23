@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { parseBuffer } from "music-metadata";
@@ -206,37 +207,70 @@ async function synthesizeWithEdgeTts(text, outPath) {
   return meta.format.duration || 5;
 }
 
-async function synthesizeVoice(apiKey, voiceId, text, outPath) {
-  if (apiKey) {
+async function synthesizeWithGeminiTts(apiKey, text, outPath, voiceName = "Puck") {
+  const styledPrompt = `Bacakan naskah edukasi sains berikut dalam Bahasa Indonesia dengan gaya ramah, hangat, antusias, artikulasi jelas, dan tempo pas untuk video edukasi Reels:\n${text}`;
+  for (const model of ["gemini-2.5-flash-preview-tts", "gemini-3.8-flash-tts"]) {
     try {
       const res = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: "POST",
-          headers: {
-            "xi-api-key": apiKey,
-            "content-type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text,
-            model_id: "eleven_multilingual_v2",
-            voice_settings: { stability: 0.75, similarity_boost: 0.75 },
+            contents: [{ parts: [{ text: styledPrompt }] }],
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: { prebuiltVoiceConfig: { voiceName } },
+              },
+            },
           }),
-          signal: AbortSignal.timeout(30000),
+          signal: AbortSignal.timeout(45000),
         }
       );
 
       if (!res.ok) {
         const errText = await res.text();
-        throw new Error(`ElevenLabs API gagal (${res.status}): ${errText}`);
+        throw new Error(`${model} (${res.status}): ${errText.slice(0, 140)}`);
       }
 
-      const buf = Buffer.from(await res.arrayBuffer());
-      fs.writeFileSync(outPath, buf);
-      const meta = await parseBuffer(buf, "audio/mpeg");
+      const data = await res.json();
+      const inline = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+      if (!inline?.data) {
+        throw new Error(`${model} tidak mengembalikan audio.`);
+      }
+
+      const rawBuf = Buffer.from(inline.data, "base64");
+      const mime = String(inline.mimeType || "").toLowerCase();
+      const tmpIn = `${outPath}.raw`;
+      fs.writeFileSync(tmpIn, rawBuf);
+
+      const ffArgs = mime.includes("pcm") || mime.includes("l16")
+        ? ["-y", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", tmpIn]
+        : ["-y", "-i", tmpIn];
+      execFileSync(
+        "ffmpeg",
+        [...ffArgs, "-ar", "24000", "-ac", "1", "-c:a", "libmp3lame", "-b:a", "128k", outPath],
+        { stdio: "pipe" }
+      );
+      fs.rmSync(tmpIn, { force: true });
+
+      const mp3Buf = fs.readFileSync(outPath);
+      const meta = await parseBuffer(mp3Buf, "audio/mpeg");
       return meta.format.duration || 5;
     } catch (err) {
-      console.warn(`[TTS] ElevenLabs gagal (${err.message.slice(0, 120)}), fallback ke Edge TTS (id-ID-ArdiNeural)...`);
+      console.warn(`[TTS] Gemini (${model}) gagal (${err.message.slice(0, 120)}), coba fallback...`);
+    }
+  }
+  throw new Error("Semua model Gemini TTS gagal.");
+}
+
+async function synthesizeVoice(geminiApiKey, voiceName, text, outPath) {
+  if (geminiApiKey) {
+    try {
+      return await synthesizeWithGeminiTts(geminiApiKey, text, outPath, voiceName);
+    } catch (err) {
+      console.warn(`[TTS] Fallback ke Edge TTS (id-ID-ArdiNeural): ${err.message}`);
     }
   }
 
@@ -378,8 +412,8 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
     }
     const absAudio = path.join(audioDir, `scene-${i + 1}.mp3`);
     const durSec = await synthesizeVoice(
-      ELEVENLABS_API_KEY,
-      ELEVENLABS_VOICE_ID,
+      process.env.GEMINI_API_KEY,
+      process.env.GEMINI_TTS_VOICE || "Puck",
       sc.narration,
       absAudio
     );

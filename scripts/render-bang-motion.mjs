@@ -66,7 +66,7 @@ function concatAudioWithCoverSilence(audioPaths, outAudioPath, coverSilenceSec =
 
   execFileSync(
     "ffmpeg",
-    ["-y", "-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", outAudioPath],
+    ["-y", "-f", "concat", "-safe", "0", "-i", listPath, "-ar", "24000", "-ac", "1", "-c:a", "libmp3lame", "-b:a", "128k", outAudioPath],
     { stdio: "pipe" }
   );
 }
