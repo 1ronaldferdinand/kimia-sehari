@@ -328,45 +328,31 @@ async function main() {
   const prompt = `Tanggal edisi: ${dateStr}.
 Buatkan satu topik riset kimia sehari-hari di alam dengan fokus tema "${category}" dari sudut pandang "${angle}".${exclusionLine}
 Gunakan gaya bahasa "Kimia Sehari": ramah, santai, edukatif.
-Total durasi narasi suara harus sekitar 50-65 detik (sekitar 125-150 kata total), dibagi ke **6 sampai 8 adegan** berurutan (15-22 kata per adegan).
+Total durasi narasi suara harus sekitar 50-65 detik (sekitar 125-150 kata total), dibagi ke **6 sampai 7 adegan** berurutan (15-22 kata per adegan).
 
-Kamu juga harus menulis file HTML tunggal yang lengkap di key "html_code" mengikuti arsitektur **Bang Motion (HTML + CSS + GSAP 3.12.5)**!
-
-Aturan ketat untuk "html_code" (disimpan ke out/scene.html, dirender Puppeteer di viewport 1080x1920):
-1. Muat GSAP dari \`https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js\` dan Google Font \`Plus Jakarta Sans\`.
-2. Baca data timing & judul dari \`window.__SCENE_DATA__\` (berisi \`{ judul_pendek, topik, totalDuration, scenes: [{ badge, start, duration, callouts }] }\`).
-3. **WAJIB ADA COVER THUMBNAIL DI FRAME 0 (\`t = 0.0s .. 0.45s\`)**:
-   - Elemen \`#cover\` menutupi layar penuh pada \`t = 0\` dengan latar **Cream / White Bone (\`#F7F4EC\`)**, badge \`KIMIA SEHARI\` (\`#2E6F40\`), dan **\`judul_pendek\`** berukuran besar (70–78px, tebal 900, warna \`#3B281E\`) di tengah layar — agar frame 0 menjadi thumbnail video yang rapi & terbaca jelas.
-   - Pada \`t = 0.35s\`, animasikan \`#cover\` keluar mulus (\`opacity: 0, scale: 1.06, duration: 0.45, ease: "power3.inOut"\`) menuju Adegan 1!
-4. **Hukum Bang Motion Anti-PPT**:
-   - Latar belakang hangat **Cream / White Bone (\`#F7F4EC\` / \`#FAF8F3\`)** dengan 2 glow orb lembut yang bergerak perlahan sepanjang \`totalDuration\`.
-   - Tata letak 3 zona anti-tumpang-tindih: Header di \`top: 96px\` (\`left: 56px, right: 56px\`), panggung visual di \`top: 200px; bottom: 340px\` (ruang \`bottom: 340px\` HARUS kosong untuk subtitle), callout pills \`#FFFFFF\` berteks \`#3B281E\` di bawah SVG.
-   - Satu dunia/kamera GSAP yang hidup (kamera bernapas/zoom ke zona reaksi, SVG \`strokeDashoffset\` panah menggambar diri, partikel/molekul bergerak, pergantian adegan memakai \`tl.call(...)\` atau \`tl.to(...)\` di waktu \`sc.start\`).
-   - DILARANG menaruh teks panjang di dalam SVG.
-   - DILARANG membuat progress bar / timeline bar / subtitle sendiri di HTML karena sudah disediakan otomatis oleh overlay sistem.
-5. **Kontrak Timeline WAJIB**:
-   - Buat \`const tl = gsap.timeline({ paused: true });\` dengan \`tl.to({}, { duration: 0.01 }, data.totalDuration);\` di akhir.
-   - Set \`window.OPENER = { tl, DURATION: data.totalDuration, ready: true };\`
-   - Jika \`!location.search.includes("clean=1")\`, jalankan \`tl.repeat(-1).play(0);\`.
+Sistem visual kita memakai **Bang Motion Engine** yang merender tiap adegan secara presisi & konsisten. Pilih \`visual_type\` yang paling tepat untuk tiap adegan:
+- \`"hook"\`: Adegan pembuka fenomena nyata (isi \`callouts\` dengan 2 kata kunci).
+- \`"zoom"\`: Transisi zoom mendekat ke zona reaksi (isi \`callouts\` dengan 2 label singkat).
+- \`"molecule"\`: Struktur molekul simetris (WAJIB isi \`atoms\`, contoh: \`["C", "H", "O", "H"]\` atau \`["Fe", "O₂", "H₂O"]\`, maksimal 5 atom).
+- \`"reaction"\`: Diagram mekanisme reaksi A + B -> C (WAJIB isi \`reactants\` array 2 string, \`catalyst\` string singkat, dan \`product\` string singkat).
+- \`"summary"\`: Kartu ringkasan 3 poin (isi \`callouts\` dengan 3 poin singkat maks 4 kata per poin; adegan terakhir WAJIB diakhiri kalimat: Selanjutnya kita bahas apa lagi?).
 
 Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
 {
   "topik": "Judul lengkap konten",
-  "judul_pendek": "Judul singkat maks 6 kata",
+  "judul_pendek": "Judul singkat maks 6 kata (dipakai di Thumbnail Cover)",
   "caption": "Caption Instagram & TikTok lengkap dengan hashtag",
   "scenes": [
-    { "id": 1, "badge": "Fakta Alam", "narration": "15-22 kata hook penasaran...", "callouts": ["LABEL 1", "LABEL 2"] },
-    { "id": 2, "badge": "Pengamatan Awal", "narration": "15-22 kata...", "callouts": ["LABEL 1", "LABEL 2"] },
-    { "id": 3, "badge": "Zoom Lebih Dekat", "narration": "15-22 kata...", "callouts": ["LABEL 1", "LABEL 2"] },
-    { "id": 4, "badge": "Level Molekul", "narration": "15-22 kata...", "callouts": ["MOLEKUL A", "MOLEKUL B"] },
-    { "id": 5, "badge": "Proses Reaksi", "narration": "15-22 kata...", "callouts": ["PROSES", "KATALIS"] },
-    { "id": 6, "badge": "Hasil Reaksi", "narration": "15-22 kata...", "callouts": ["HASIL", "EFEK NYATA"] },
-    { "id": 7, "badge": "Ringkasan", "narration": "15-22 kata dan WAJIB diakhiri dengan kalimat persis: Selanjutnya kita bahas apa lagi?", "callouts": ["POIN 1", "POIN 2"] }
-  ],
-  "html_code": "<!doctype html>..."
+    { "id": 1, "badge": "Fakta Alam", "visual_type": "hook", "headline": "3-5 kata singkat", "narration": "15-22 kata hook penasaran...", "callouts": ["LABEL 1", "LABEL 2"] },
+    { "id": 2, "badge": "Mengamati Dekat", "visual_type": "zoom", "headline": "3-5 kata singkat", "narration": "15-22 kata...", "callouts": ["ZONA REAKSI", "PERMUKAAN"] },
+    { "id": 3, "badge": "Level Molekul", "visual_type": "molecule", "headline": "3-5 kata singkat", "narration": "15-22 kata...", "atoms": ["ATOM PUSAT", "ATOM 1", "ATOM 2", "ATOM 3"], "callouts": ["IKATAN KIMIA", "STABILITAS"] },
+    { "id": 4, "badge": "Mekanisme Reaksi", "visual_type": "reaction", "headline": "3-5 kata singkat", "narration": "15-22 kata...", "reactants": ["Zat A", "Zat B"], "catalyst": "Enzim/Suhu", "product": "Hasil Reaksi", "callouts": ["REAKSI ALAMI", "HASIL BARU"] },
+    { "id": 5, "badge": "Dampak Nyata", "visual_type": "reaction", "headline": "3-5 kata singkat", "narration": "15-22 kata...", "reactants": ["Hasil Awal", "Lingkungan"], "catalyst": "Proses Lanjut", "product": "Efek Terlihat", "callouts": ["PERUBAHAN", "MANFAAT"] },
+    { "id": 6, "badge": "Ringkasan", "visual_type": "summary", "headline": "3-5 kata singkat", "narration": "15-22 kata dan WAJIB diakhiri kalimat persis: Selanjutnya kita bahas apa lagi?", "callouts": ["Poin 1 singkat", "Poin 2 singkat", "Poin 3 singkat"] }
+  ]
 }`;
 
-  console.log(`[1/4] Meminta naskah & kode Bang Motion HTML+GSAP ke AI...`);
+  console.log(`[1/4] Meminta naskah & struktur visual Bang Motion ke AI...`);
   const raw = await generateWithAI(process.env, [
     { role: "user", content: prompt },
   ]);
@@ -402,6 +388,12 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
     timedScenes.push({
       id: sc.id || i + 1,
       badge: sc.badge || "Kimia Sehari",
+      visual_type: sc.visual_type || "hook",
+      headline: sc.headline || generated.judul_pendek,
+      atoms: sc.atoms || [],
+      reactants: sc.reactants || [],
+      catalyst: sc.catalyst || "",
+      product: sc.product || "",
       narration: sc.narration,
       callouts: sc.callouts || [],
       start: Number(cursorSec.toFixed(3)),
@@ -418,82 +410,28 @@ Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
   };
 
   const sceneHtmlPath = path.join(outDir, "scene.html");
-  const fallbackHtmlPath = path.resolve("templates/bang-motion-fallback.html");
-
+  const engineHtml = fs.readFileSync(
+    path.resolve("templates/bang-motion-fallback.html"),
+    "utf8"
+  );
   fs.writeFileSync(
     sceneHtmlPath,
-    injectSceneDataAndOverlay(generated.html_code || "", sceneData),
+    injectSceneDataAndOverlay(engineHtml, sceneData),
     "utf8"
   );
 
-  try {
-    await validateBangMotionHtml(outDir);
-    console.log("[Validate] Bang Motion HTML+GSAP valid!");
-  } catch (err) {
-    console.warn(`[Validate] Gagal percobaan pertama (${err.message}), meminta AI memperbaiki...`);
-    let ok = false;
-    try {
-      const fixRaw = await generateWithAI(process.env, [
-        { role: "user", content: prompt },
-        { role: "assistant", content: raw },
-        {
-          role: "user",
-          content: `HTML/GSAP kamu gagal validasi di Puppeteer:\n${err.message}\n\nPerbaiki ONLY "html_code" dan kembalikan JSON murni: { "html_code": "..." }`,
-        },
-      ]);
-      const fixed = extractJson(fixRaw);
-      if (fixed.html_code) {
-        fs.writeFileSync(
-          sceneHtmlPath,
-          injectSceneDataAndOverlay(fixed.html_code, sceneData),
-          "utf8"
-        );
-        await validateBangMotionHtml(outDir);
-        console.log("[Validate] Bang Motion HTML+GSAP valid setelah perbaikan!");
-        ok = true;
-      }
-    } catch {
-      ok = false;
-    }
-
-    if (!ok) {
-      console.warn("[Validate] Masih gagal, menggunakan templates/bang-motion-fallback.html.");
-      const fallbackHtml = fs.readFileSync(fallbackHtmlPath, "utf8");
-      fs.writeFileSync(
-        sceneHtmlPath,
-        injectSceneDataAndOverlay(fallbackHtml, sceneData),
-        "utf8"
-      );
-    }
-  }
+  await validateBangMotionHtml(outDir);
+  console.log("[Validate] Bang Motion Engine HTML+GSAP valid!");
 
   console.log("[3/4] Merender video & thumbnail Bang Motion -> out/video.mp4 & out/thumb.jpg...");
-  try {
-    await renderBangMotion({
-      outDir,
-      audioPaths,
-      outMp4Path: path.join(outDir, "video.mp4"),
-      outThumbPath: path.join(outDir, "thumb.jpg"),
-      fps: 30,
-      coverSilenceSec,
-    });
-  } catch (renderErr) {
-    console.warn(`[Render] Gagal pada HTML AI (${renderErr.message}), fallback ke templates/bang-motion-fallback.html...`);
-    const fallbackHtml = fs.readFileSync(fallbackHtmlPath, "utf8");
-    fs.writeFileSync(
-      sceneHtmlPath,
-      injectSceneDataAndOverlay(fallbackHtml, sceneData),
-      "utf8"
-    );
-    await renderBangMotion({
-      outDir,
-      audioPaths,
-      outMp4Path: path.join(outDir, "video.mp4"),
-      outThumbPath: path.join(outDir, "thumb.jpg"),
-      fps: 30,
-      coverSilenceSec,
-    });
-  }
+  await renderBangMotion({
+    outDir,
+    audioPaths,
+    outMp4Path: path.join(outDir, "video.mp4"),
+    outThumbPath: path.join(outDir, "thumb.jpg"),
+    fps: 30,
+    coverSilenceSec,
+  });
 
   await saveTopic(UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, generated.topik);
 
