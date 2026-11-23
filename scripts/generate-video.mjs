@@ -306,7 +306,7 @@ function injectSceneDataAndOverlay(html, sceneData) {
   const dataScript = `<script>window.__SCENE_DATA__ = ${JSON.stringify(sceneData)};</script>`;
   const overlayHtml = `
 <div id="bm-prog" style="position:fixed;top:44px;left:64px;right:64px;height:10px;border-radius:999px;background:rgba(59,40,30,0.16);overflow:hidden;z-index:35;pointer-events:none">
-  <div id="bm-prog-fill" style="width:0%;height:100%;background:#2E6F40;border-radius:999px"></div>
+  <div id="bm-prog-fill" style="width:0%;height:100%;background:#DC6A4C;border-radius:999px"></div>
 </div>
 <div id="bm-sub" style="position:fixed;bottom:110px;left:64px;right:64px;display:flex;justify-content:center;z-index:35;pointer-events:none;opacity:0">
   <div id="bm-sub-box" style="background:rgba(15,23,42,0.86);padding:18px 30px;border-radius:24px;display:flex;flex-wrap:wrap;justify-content:center;gap:8px 14px;box-shadow:0 12px 32px rgba(0,0,0,0.22)"></div>
