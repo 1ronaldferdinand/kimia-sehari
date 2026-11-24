@@ -156,8 +156,8 @@ async function generateWithAI(env, messages) {
 
   const combinedPrompt = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n");
   const candidates = env.GEMINI_MODEL
-    ? [env.GEMINI_MODEL, "gemini-4-neon", "gemini-4-argon", "gemini-4-hydrogen", "gemini-3.8-flash", "gemini-2.5-flash", "gemini-flash-latest"]
-    : ["gemini-4-neon", "gemini-4-argon", "gemini-4-hydrogen", "gemini-3.8-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+    ? [env.GEMINI_MODEL, "gemini-4-neon", "gemini-4-carbon", "gemini-4-hydrogen", "gemini-2.5-flash", "gemini-flash-latest"]
+    : ["gemini-4-neon", "gemini-4-carbon", "gemini-4-hydrogen", "gemini-2.5-flash", "gemini-flash-latest"];
 
   let lastErr;
   for (const model of [...new Set(candidates)]) {
@@ -208,7 +208,7 @@ async function synthesizeWithEdgeTts(text, outPath) {
 }
 
 async function synthesizeOneWithGeminiTts(apiKey, model, text, outPath, voiceName = "Puck") {
-  const styledPrompt = `Bacakan naskah edukasi sains berikut dalam Bahasa Indonesia dengan gaya ramah, hangat, antusias, artikulasi jelas, dan tempo pas untuk video edukasi Reels:\n${text}`;
+  const styledPrompt = `Say in a cheerful, enthusiastic, clear Indonesian young man voice explaining fun facts: ${text}`;
   for (let attempt = 1; attempt <= 2; attempt++) {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -269,7 +269,7 @@ async function synthesizeOneWithGeminiTts(apiKey, model, text, outPath, voiceNam
 /** Synthesize all scenes using a single consistent TTS engine/model so voice never changes mid-video. */
 async function synthesizeAllScenes(geminiApiKey, voiceName, scenes, audioDir) {
   if (geminiApiKey) {
-    for (const model of ["gemini-2.5-flash-preview-tts", "gemini-3.8-flash-tts"]) {
+    for (const model of ["gemini-2.5-flash-preview-tts"]) {
       try {
         const durations = [];
         for (let i = 0; i < scenes.length; i++) {
@@ -386,27 +386,24 @@ async function main() {
   const prompt = `Tanggal edisi: ${dateStr}.
 Buatkan satu topik riset kimia sehari-hari di alam dengan fokus tema "${category}" dari sudut pandang "${angle}".${exclusionLine}
 Gunakan gaya bahasa "Kimia Sehari": ramah, santai, edukatif.
-Total durasi narasi suara harus sekitar 50-65 detik (sekitar 125-150 kata total), dibagi ke **6 sampai 7 adegan** berurutan (15-22 kata per adegan).
+Total durasi narasi suara sekitar **45-55 detik** (110-135 kata total), dibagi tepat ke dalam **5 adegan** berurutan dengan alur WAJIB berikut:
+1. **Adegan 1 (\`visual_type: "hook"\`)**: Hook berupa ilustrasi permasalahan nyata sehari-hari yang sering kita temui (misal: potongan apel menguning, pagar berkarat, kerak garam di panci — sesuaikan dengan topik hari ini).
+2. **Adegan 2 (\`visual_type: "zoom"\`)**: Penjelasan secara **general/umum** tentang apa yang sebenarnya terjadi pada fenomena tersebut.
+3. **Adegan 3 (\`visual_type: "molecule"\`)**: Penjelasan secara **rinci dengan ilustrasi molekul kimia** (WAJIB isi \`atoms\`, contoh: \`["Fe", "O₂", "H₂O", "Fe₂O₃"]\`, maksimal 5 atom/senyawa).
+4. **Adegan 4 (\`visual_type: "summary"\`)**: Penjelasan **kesimpulan** & manfaat/cara mengatasinya di kehidupan sehari-hari (isi \`callouts\` dengan 3 poin singkat maks 4 kata).
+5. **Adegan 5 (\`visual_type: "hook"\`)**: Hook penutup ringan yang mengajak penonton berkomentar dan WAJIB diakhiri kalimat persis: \`Selanjutnya kita bahas apa lagi?\`
 
-Sistem visual kita memakai **Bang Motion Engine** yang merender tiap adegan secara presisi & konsisten. Pilih \`visual_type\` yang paling tepat untuk tiap adegan:
-- \`"hook"\`: Adegan pembuka fenomena nyata (isi \`callouts\` dengan 2 kata kunci).
-- \`"zoom"\`: Transisi zoom mendekat ke zona reaksi (isi \`callouts\` dengan 2 label singkat).
-- \`"molecule"\`: Struktur molekul simetris (WAJIB isi \`atoms\`, contoh: \`["C", "H", "O", "H"]\` atau \`["Fe", "O₂", "H₂O"]\`, maksimal 5 atom).
-- \`"reaction"\`: Diagram mekanisme reaksi A + B -> C (WAJIB isi \`reactants\` array 2 string, \`catalyst\` string singkat, dan \`product\` string singkat).
-- \`"summary"\`: Kartu ringkasan 3 poin (isi \`callouts\` dengan 3 poin singkat maks 4 kata per poin; adegan terakhir WAJIB diakhiri kalimat: Selanjutnya kita bahas apa lagi?).
-
-Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur:
+Kembalikan HANYA JSON murni (tanpa markdown fence) dengan struktur tepat 5 adegan:
 {
   "topik": "Judul lengkap konten",
   "judul_pendek": "Judul singkat maks 6 kata (dipakai di Thumbnail Cover)",
   "caption": "Caption Instagram & TikTok lengkap dengan hashtag",
   "scenes": [
-    { "id": 1, "badge": "Fakta Alam", "visual_type": "hook", "headline": "3-5 kata singkat", "narration": "15-22 kata hook penasaran...", "callouts": ["LABEL 1", "LABEL 2"] },
-    { "id": 2, "badge": "Mengamati Dekat", "visual_type": "zoom", "headline": "3-5 kata singkat", "narration": "15-22 kata...", "callouts": ["ZONA REAKSI", "PERMUKAAN"] },
-    { "id": 3, "badge": "Level Molekul", "visual_type": "molecule", "headline": "3-5 kata singkat", "narration": "15-22 kata...", "atoms": ["ATOM PUSAT", "ATOM 1", "ATOM 2", "ATOM 3"], "callouts": ["IKATAN KIMIA", "STABILITAS"] },
-    { "id": 4, "badge": "Mekanisme Reaksi", "visual_type": "reaction", "headline": "3-5 kata singkat", "narration": "15-22 kata...", "reactants": ["Zat A", "Zat B"], "catalyst": "Enzim/Suhu", "product": "Hasil Reaksi", "callouts": ["REAKSI ALAMI", "HASIL BARU"] },
-    { "id": 5, "badge": "Dampak Nyata", "visual_type": "reaction", "headline": "3-5 kata singkat", "narration": "15-22 kata...", "reactants": ["Hasil Awal", "Lingkungan"], "catalyst": "Proses Lanjut", "product": "Efek Terlihat", "callouts": ["PERUBAHAN", "MANFAAT"] },
-    { "id": 6, "badge": "Ringkasan", "visual_type": "summary", "headline": "3-5 kata singkat", "narration": "15-22 kata dan WAJIB diakhiri kalimat persis: Selanjutnya kita bahas apa lagi?", "callouts": ["Poin 1 singkat", "Poin 2 singkat", "Poin 3 singkat"] }
+    { "id": 1, "badge": "Masalah Nyata", "visual_type": "hook", "headline": "3-5 kata masalah", "narration": "22-26 kata hook permasalahan nyata...", "callouts": ["MASALAH", "FENOMENA"] },
+    { "id": 2, "badge": "Penjelasan Umum", "visual_type": "zoom", "headline": "3-5 kata gambaran umum", "narration": "24-28 kata penjelasan general...", "callouts": ["PROSES ALAMI", "PENYEBAB"] },
+    { "id": 3, "badge": "Molekul Kimia", "visual_type": "molecule", "headline": "3-5 kata nama reaksi", "narration": "28-34 kata penjelasan rinci molekul...", "atoms": ["ATOM 1", "ATOM 2", "ATOM 3", "ATOM 4"], "callouts": ["MOLEKUL", "IKATAN KIMIA"] },
+    { "id": 4, "badge": "Kesimpulan", "visual_type": "summary", "headline": "3-5 kata kesimpulan", "narration": "22-26 kata kesimpulan...", "callouts": ["Poin 1 singkat", "Poin 2 singkat", "Poin 3 singkat"] },
+    { "id": 5, "badge": "Bahas Apa Lagi?", "visual_type": "hook", "headline": "Tulis di Komentar!", "narration": "12-16 kata ajakan komentar... Selanjutnya kita bahas apa lagi?", "callouts": ["KOMENTAR", "KIMIA SEHARI"] }
   ]
 }`;
 
